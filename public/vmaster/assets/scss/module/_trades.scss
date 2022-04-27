@@ -1,0 +1,66 @@
+.trades input {
+	border-color: #e0e3eb;
+	border-left: 0;
+	font-weight: 300;
+}
+.trades input:focus {
+	box-shadow: none;
+	border-color: #e0e3eb;
+}
+.trades .nav {
+	margin-top: 14px;
+	background: #f5f9fc;
+	border-bottom: transparent;
+}  
+.trades .nav-link {
+	color: #4a4a4a;
+	padding: 10px 13px;
+}
+.trades .nav-link:hover {
+	border-color: transparent;
+}
+.trades .nav-link.active {
+	color: #007bff;
+	background: transparent;
+	border-color: transparent;
+}
+.msg-wrap {
+	text-align: center;
+	padding: 20px 10px;
+}
+.warn-title {
+	display: block;
+	font-weight: 600;
+	font-size: 20px;
+}
+.close-trade-wrap {
+	padding: 10px;
+}
+.close-trade-card {
+	width: 450px;
+	box-shadow: #00000033 0px 2px 14px -6px;
+	border-radius: 5px;
+	padding: 10px;
+	border: 1px solid #f2f4f9;
+	margin: 15px 0;
+}
+.val-wrap-green {
+	color: #017038;
+	background-color: #84ebb7;
+	border-radius: 5px;
+	padding: 5px;
+	margin: 0 5px;
+}
+.val-wrap-red {
+	background-color: #ffbbba;
+	color: #f70c08;;
+	border-radius: 5px;
+	padding: 5px;
+	margin: 0 5px;
+}
+.close-trade-row {
+	padding: 5px;
+}
+.close-end-col {
+	text-align: right;
+}
