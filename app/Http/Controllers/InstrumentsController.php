@@ -39,10 +39,11 @@ class InstrumentsController extends Controller
 
     public function get_instruments_list(Request $request){
         $user = JWTAuth::authenticate($this->token);
-
+        $type = $request->type;
         $favourites = DB::table('instruments')
             ->join('favourites', 'favourites.instrument_id', 'instruments.instrument_token')
             ->where('favourites.user_id', '=', $user['id'])
+            ->where('instruments.exchange', '=', $type)
             ->select('instruments.*')
             ->get();
 
@@ -50,6 +51,7 @@ class InstrumentsController extends Controller
 
         $instruments = DB::table('instruments')
             ->whereNotIn('instrument_token', $favourites)
+            ->where('instruments.exchange', '=', $type)
             ->select('instruments.*')
             ->get();
         
@@ -60,10 +62,11 @@ class InstrumentsController extends Controller
 
     public function get_favourites_list(Request $request){
         $user = JWTAuth::authenticate($this->token);
-
+        $type = $request->type;
         $favourites = DB::table('instruments')
             ->join('favourites', 'favourites.instrument_id', 'instruments.instrument_token')
             ->where('favourites.user_id', '=', $user['id'])
+            ->where('instruments.exchange', '=', $type)
             ->select('instruments.*')
             ->get();
     
@@ -76,6 +79,7 @@ class InstrumentsController extends Controller
         $user = JWTAuth::authenticate($this->token);
 
         $instruments = $request->instruments;
+        $type = $request->type;
         foreach($instruments as $row){
             $new = new Favourites;
             $new->instrument_id = $row;
@@ -87,6 +91,7 @@ class InstrumentsController extends Controller
         $favourites = DB::table('instruments')
             ->join('favourites', 'favourites.instrument_id', 'instruments.instrument_token')
             ->where('favourites.user_id', '=', $user['id'])
+            ->where('instruments.exchange', '=', $type)
             ->select('instruments.*')
             ->get();
 
@@ -94,12 +99,25 @@ class InstrumentsController extends Controller
 
         $instruments = DB::table('instruments')
             ->whereNotIn('instrument_token', $favourites)
+            ->where('instruments.exchange', '=', $type)
             ->select('instruments.*')
             ->get();
         
         return response()->json(['status' => 'true', 'instruments' => $instruments]);
 
     }
+
+    function buy_sell(Request $request){
+        $user = JWTAuth::authenticate($this->token);
+        echo $instrument_id = $request->instrument_id;
+        echo $quantity = $request->quantity;
+        echo $amount = ($request->amount)?$request->amount:0;
+        echo $type = $request->type;
+
+
+    }
+
+
 
 
 }
