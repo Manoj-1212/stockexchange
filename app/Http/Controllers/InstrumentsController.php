@@ -94,7 +94,7 @@ class InstrumentsController extends Controller
             ->where('instruments.exchange', '=', $type)
             ->select('instruments.*')
             ->get();
-
+        $favouritesList = $favourites;
         $favourites = array_column(json_decode($favourites,true), 'instrument_token');
 
         $instruments = DB::table('instruments')
@@ -103,7 +103,7 @@ class InstrumentsController extends Controller
             ->select('instruments.*')
             ->get();
         
-        return response()->json(['status' => 'true', 'instruments' => $instruments]);
+        return response()->json(['status' => 'true', 'instruments' => $instruments, 'favourites' => $favouritesList]);
 
     }
 
