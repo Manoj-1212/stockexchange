@@ -54,7 +54,7 @@ class ApiController extends Controller
 
         //Send failed response if request is not valid
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->messages()], 200);
+            return response()->json(['success' => false,'message' => $validator->messages()], 200);
         }
 
         //Request is validated
@@ -78,6 +78,7 @@ class ApiController extends Controller
         return response()->json([
             'success' => true,
             'token' => $token,
+            'user' => auth()->user()
         ]);
     }
  
