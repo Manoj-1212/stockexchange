@@ -26,4 +26,5 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::get('logout', [ApiController::class, 'logout']);
     Route::get('get_instruments_list', [InstrumentsController::class, 'get_instruments_list']);
     Route::get('get_favourites_list', [InstrumentsController::class, 'get_favourites_list']);
+    Route::post('save_favourites', [InstrumentsController::class, 'save_favourites']);
 });
