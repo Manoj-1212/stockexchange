@@ -130,6 +130,6 @@ class ApiController extends Controller
         $user->password = bcrypt($request->get('new-password'));
         $user->save();
 
-        return response()->json(['status' => 'true', 'message' => 'Password successfully changed!']);
+        return response()->json(['status' => true, 'message' => 'Password successfully changed!']);
     }
 }

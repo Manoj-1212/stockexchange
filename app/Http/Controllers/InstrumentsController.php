@@ -57,7 +57,7 @@ class InstrumentsController extends Controller
             ->select('instruments.*')
             ->get();
         
-        return response()->json(['status' => 'true', 'instruments' => $instruments]);  
+        return response()->json(['status' => true, 'instruments' => $instruments]);  
 
     }
 
@@ -72,7 +72,7 @@ class InstrumentsController extends Controller
             ->select('instruments.*')
             ->get();
     
-        return response()->json(['status' => 'true', 'favourites' => $favourites]);  
+        return response()->json(['status' => true, 'favourites' => $favourites]);  
 
     }
 
@@ -105,7 +105,7 @@ class InstrumentsController extends Controller
             ->select('instruments.*')
             ->get();
         
-        return response()->json(['status' => 'true', 'instruments' => $instruments, 'favourites' => $favouritesList]);
+        return response()->json(['status' => true, 'instruments' => $instruments, 'favourites' => $favouritesList]);
 
     }
 
@@ -141,7 +141,7 @@ class InstrumentsController extends Controller
         $new->instrument_details = $data['instrument_details'];
         $new->save();
 
-        return response()->json(['status' => 'true', 'message' => "$buySell Order Place Successfully !!"]);
+        return response()->json(['status' => true, 'message' => "$buySell Order Place Successfully !!"]);
 
     }
 
@@ -150,7 +150,7 @@ class InstrumentsController extends Controller
         $user = JWTAuth::authenticate($this->token);
 
 
-        return response()->json(['status' => 'true', 'ledgerBalance' => 443, 'marginAvailable' => '0' ,'activePl' => 0,'m2m' => 523]);
+        return response()->json(['status' => true, 'ledgerBalance' => 443, 'marginAvailable' => '0' ,'activePl' => 0,'m2m' => 523]);
 
     }
 
@@ -176,7 +176,7 @@ class InstrumentsController extends Controller
             ->select('order_checkout.*')
             ->get();
 
-        return response()->json(['status' => 'true', 'orders' => $orders]);
+        return response()->json(['status' => true, 'orders' => $orders]);
 
     }
 
@@ -188,7 +188,7 @@ class InstrumentsController extends Controller
             ->select('fund_balance.amount', 'fund_balance.status','fund_balance.created_at', DB::raw('(CASE fund_balance.status WHEN 1 THEN "Credit" ELSE "Debit" END) as transaction_type'))
             ->get();
 
-        return response()->json(['status' => 'true', 'funds' => $funds]);
+        return response()->json(['status' => true, 'funds' => $funds]);
 
     }
 
@@ -199,7 +199,7 @@ class InstrumentsController extends Controller
 
         $mcx = ["brokerage" => '500 per crore', "margin_intraday" => 'Turnonver / 400', "margin_holding" => 'Turnonver / 50', "exposure_type" => 'per_turnover', "brokerage_type" => 'per_crore'];
         
-        return response()->json(['status' => 'true', 'nseTrading' => $nse, 'mcxTrading' => $mcx]);
+        return response()->json(['status' => true, 'nseTrading' => $nse, 'mcxTrading' => $mcx]);
 
     }
 
