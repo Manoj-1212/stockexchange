@@ -112,10 +112,11 @@ class InstrumentsController extends Controller
     function buy_sell(Request $request){
         $user = JWTAuth::authenticate($this->token);
 
-        $data['instrument_id'] = $request->instrument_id;
+        $data['instrument_id'] = $request->instrument_token;
         $data['quantity'] = $request->quantity;
         $data['amount'] = ($request->amount)?$request->amount:0;
         $data['order_type'] = $request->type;
+        $data['action'] = $request->type;
         $data['instrument_details'] = $request->instrument_details;
         $buySell = $request->type == 1?"Buy":"Sell";
 
@@ -136,6 +137,7 @@ class InstrumentsController extends Controller
         $new->amount = $data['amount'];
         $new->qty = $data['quantity'];
         $new->order_type = $data['order_type'];
+        $new->action = $data['action'];
         $new->instrument_details = $data['instrument_details'];
         $new->save();
 
