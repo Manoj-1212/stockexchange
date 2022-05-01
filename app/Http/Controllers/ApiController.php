@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Validator;
+use Hash;
 
 class ApiController extends Controller
 {
@@ -84,19 +85,10 @@ class ApiController extends Controller
  
     public function logout(Request $request)
     {
-        //valid credential
-        $validator = Validator::make($request->only('token'), [
-            'token' => 'required'
-        ]);
-
-        //Send failed response if request is not valid
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->messages()], 200);
-        }
-
+        $token = $request->bearerToken();
         //Request is validated, do logout        
         try {
-            JWTAuth::invalidate($request->token);
+            JWTAuth::invalidate($token);
  
             return response()->json([
                 'success' => true,
@@ -119,5 +111,25 @@ class ApiController extends Controller
         $user = JWTAuth::authenticate($request->token);
  
         return response()->json(['user' => $user]);
+    }
+
+    public function change_password(Request $request) {
+        if (!(Hash::check($request->get('current-password'), JWTAuth::user()->password))) {
+            // The passwords matches
+            return response()->json(['status' => 'false', 'message' => 'Your current password does not matches with the password.']);
+        }
+
+        if(strcmp($request->get('current-password'), $request->get('new-password')) == 0){
+            // Current password and new password same
+            return response()->json(['status' => 'false', 'message' => 'New Password cannot be same as your current password.']);
+        }
+
+
+        //Change Password
+        $user = JWTAuth::user();
+        $user->password = bcrypt($request->get('new-password'));
+        $user->save();
+
+        return response()->json(['status' => 'true', 'message' => 'Password successfully changed!']);
     }
 }

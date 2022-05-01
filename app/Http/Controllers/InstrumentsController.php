@@ -11,6 +11,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Models\Favourites;
+use App\Models\Order;
+use App\Models\Funds;
 
 
 class InstrumentsController extends Controller
@@ -109,11 +111,93 @@ class InstrumentsController extends Controller
 
     function buy_sell(Request $request){
         $user = JWTAuth::authenticate($this->token);
-        echo $instrument_id = $request->instrument_id;
-        echo $quantity = $request->quantity;
-        echo $amount = ($request->amount)?$request->amount:0;
-        echo $type = $request->type;
 
+        $data['instrument_id'] = $request->instrument_id;
+        $data['quantity'] = $request->quantity;
+        $data['amount'] = ($request->amount)?$request->amount:0;
+        $data['order_type'] = $request->type;
+        $data['instrument_details'] = $request->instrument_details;
+        $buySell = $request->type == 1?"Buy":"Sell";
+
+        //valid credential
+        $validator = Validator::make($data, [
+            'instrument_id' => 'required|integer',
+            'quantity' => 'required|integer'
+        ]);
+
+        //Send failed response if request is not valid
+        if ($validator->fails()) {
+            return response()->json(['success' => false,'message' => $validator->messages()], 200);
+        }
+
+        $new = new Order;
+        $new->instrument_id = $data['instrument_id'];
+        $new->user_id = $user['id'];
+        $new->amount = $data['amount'];
+        $new->qty = $data['quantity'];
+        $new->order_type = $data['order_type'];
+        $new->instrument_details = $data['instrument_details'];
+        $new->save();
+
+        return response()->json(['status' => 'true', 'message' => "$buySell Order Place Successfully !!"]);
+
+    }
+
+
+    function portfolio(Request $request){
+        $user = JWTAuth::authenticate($this->token);
+
+
+        return response()->json(['status' => 'true', 'ledgerBalance' => 443, 'marginAvailable' => '0' ,'activePl' => 0,'m2m' => 523]);
+
+    }
+
+
+    function trades(Request $request){
+        $user = JWTAuth::authenticate($this->token);
+        $data['trade_type'] = $request->type;
+
+        //valid credential
+        $validator = Validator::make($data, [
+            'trade_type' => 'required|string'
+        ]);
+
+        //Send failed response if request is not valid
+        if ($validator->fails()) {
+            return response()->json(['success' => false,'message' => $validator->messages()], 200);
+        }
+
+        $trades = Order::TRADE;
+        
+        $orders = DB::table('order_checkout')
+            ->where('order_checkout.status', '=', $trades[$data['trade_type']])
+            ->select('order_checkout.*')
+            ->get();
+
+        return response()->json(['status' => 'true', 'orders' => $orders]);
+
+    }
+
+    function funds(Request $request){
+        $user = JWTAuth::authenticate($this->token);
+    
+        $funds = DB::table('fund_balance')
+            ->where('fund_balance.user_id', '=', $user['id'])
+            ->select('fund_balance.amount', 'fund_balance.status','fund_balance.created_at', DB::raw('(CASE fund_balance.status WHEN 1 THEN "Credit" ELSE "Debit" END) as transaction_type'))
+            ->get();
+
+        return response()->json(['status' => 'true', 'funds' => $funds]);
+
+    }
+
+    function trading_profile(Request $request){
+        $user = JWTAuth::authenticate($this->token);
+        
+        $nse = ["brokerage" => '500 per crore', "margin_intraday" => 'Turnonver / 400', "margin_holding" => 'Turnonver / 50'];
+
+        $mcx = ["brokerage" => '500 per crore', "margin_intraday" => 'Turnonver / 400', "margin_holding" => 'Turnonver / 50', "exposure_type" => 'per_turnover', "brokerage_type" => 'per_crore'];
+        
+        return response()->json(['status' => 'true', 'nseTrading' => $nse, 'mcxTrading' => $mcx]);
 
     }
 

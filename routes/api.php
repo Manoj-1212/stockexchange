@@ -28,4 +28,9 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::get('get_favourites_list', [InstrumentsController::class, 'get_favourites_list']);
     Route::post('save_favourites', [InstrumentsController::class, 'save_favourites']);
     Route::post('buy_sell', [InstrumentsController::class, 'buy_sell']);
+    Route::get('portfolio', [InstrumentsController::class, 'portfolio']);
+    Route::get('trades', [InstrumentsController::class, 'trades']);
+    Route::get('funds', [InstrumentsController::class, 'funds']);
+    Route::get('profile', [InstrumentsController::class, 'trading_profile']);
+    Route::post('change_password',[ApiController::class, 'change_password']);
 });
