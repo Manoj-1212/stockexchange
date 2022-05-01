@@ -118,12 +118,12 @@ class InstrumentsController extends Controller
         $data['order_type'] = $request->type;
         $data['action'] = $request->type;
         $data['instrument_details'] = $request->instrument_details;
-        $buySell = $request->type == 1?"Buy":"Sell";
+        $buySell = $request->action == 1?"Buy":"Sell";
 
         //valid credential
         $validator = Validator::make($data, [
             'instrument_id' => 'required|integer',
-            'quantity' => 'required|integer'
+            'quantity' => 'required'
         ]);
 
         //Send failed response if request is not valid
