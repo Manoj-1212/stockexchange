@@ -116,7 +116,7 @@ class InstrumentsController extends Controller
         $data['quantity'] = $request->quantity;
         $data['amount'] = ($request->amount)?$request->amount:0;
         $data['order_type'] = $request->type;
-        $data['action'] = $request->type;
+        $data['action'] = $request->action;
         $data['instrument_details'] = $request->instrument_details;
         $buySell = $request->action == 1?"Buy":"Sell";
 
