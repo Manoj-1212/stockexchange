@@ -173,7 +173,8 @@ class InstrumentsController extends Controller
         
         $orders = DB::table('order_checkout')
             ->where('order_checkout.status', '=', $trades[$data['trade_type']])
-            ->select('order_checkout.*')
+            ->join('instruments', 'instruments.instrument_token', 'order_checkout.instrument_id')
+            ->select('order_checkout.*','instruments.trading_symbol',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'))
             ->get();
 
         return response()->json(['status' => true, 'orders' => $orders]);
