@@ -148,9 +148,9 @@ class InstrumentsController extends Controller
 
     function portfolio(Request $request){
         $user = JWTAuth::authenticate($this->token);
+        $portfolio = ['ledgerBalance' => 443, 'marginAvailable' => '0' ,'activePl' => 0,'m2m' => 523];
 
-
-        return response()->json(['status' => true, 'ledgerBalance' => 443, 'marginAvailable' => '0' ,'activePl' => 0,'m2m' => 523]);
+        return response()->json(['status' => true, 'portfolio' => $portfolio]);
 
     }
 
