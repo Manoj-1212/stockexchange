@@ -204,6 +204,27 @@ class InstrumentsController extends Controller
 
     }
 
+    function remove_favourites(Request $request){
+        $user = JWTAuth::authenticate($this->token);
+        
+        $instrument_token = $request->instrument_token;
+        DB::table('favourites')->where('instrument_id',$instrument_token)->where('user_id',$user['id'])->delete();
+
+        $type = $request->type;
+
+        $favourites = DB::table('instruments')
+            ->join('favourites', 'favourites.instrument_id', 'instruments.instrument_token')
+            ->where('favourites.user_id', '=', $user['id'])
+            ->where('instruments.exchange', '=', $type)
+            ->select('instruments.*')
+            ->get();
+    
+        return response()->json(['status' => true, 'favourites' => $favourites]);
+
+    }
+
+
+
 
 
 

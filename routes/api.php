@@ -21,6 +21,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::post('login', [ApiController::class, 'authenticate']);
 Route::post('register', [ApiController::class, 'register']);
+Route::post('login_admin', [ApiController::class, 'authenticate_admin']);
+Route::get('logout_admin', [ApiController::class, 'logout_admin']);
+
 
 Route::group(['middleware' => ['jwt.verify']], function() {
     Route::get('logout', [ApiController::class, 'logout']);
@@ -33,4 +36,5 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::get('funds', [InstrumentsController::class, 'funds']);
     Route::get('profile', [InstrumentsController::class, 'trading_profile']);
     Route::post('change_password',[ApiController::class, 'change_password']);
+    Route::delete('remove_favourites',[InstrumentsController::class, 'remove_favourites']);
 });
