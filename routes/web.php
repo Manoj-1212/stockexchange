@@ -1,7 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
+use Illuminate\Http\Request;
+use App\Http\Controllers\DashboardController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -14,5 +15,12 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    $data['title'] = 'Login Page';
+    $data['template'] = 'admin';
+    return view('index',['data' => $data]);
 });
+
+Route::group(['middleware' => ['revalidate']], function () {
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+});
+

@@ -9,6 +9,7 @@ use Tymon\JWTAuth\Exceptions\JWTException;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Validator;
 use Hash;
+use Session;
 
 class ApiController extends Controller
 {
@@ -76,11 +77,20 @@ class ApiController extends Controller
         }
     
         //Token created, return with success response and jwt token
-        return response()->json([
-            'success' => true,
-            'token' => $token,
-            'user' => auth()->user()
-        ]);
+        $user = auth()->user();
+        if($user['role'] == 'user'){
+            return response()->json([
+                'success' => true,
+                'token' => $token,
+                'user' => auth()->user(),
+                'accessToken' => '2I2frgvQ8oWNY2igLN6FSp8AqqaBjge2'
+            ]);
+        } else {
+            return response()->json([
+                    'success' => false,
+                    'message' => 'Login credentials are invalid.',
+                ], 401);
+        }
     }
  
     public function logout(Request $request)
@@ -131,5 +141,62 @@ class ApiController extends Controller
         $user->save();
 
         return response()->json(['status' => true, 'message' => 'Password successfully changed!']);
+    }
+
+    public function authenticate_admin(Request $request)
+    {
+        $credentials = $request->only('email', 'password');
+
+        //valid credential
+        $validator = Validator::make($credentials, [
+            'email' => 'required|email',
+            'password' => 'required|string'
+        ]);
+
+        //Send failed response if request is not valid
+        if ($validator->fails()) {
+            return response()->json(['success' => false,'message' => $validator->messages()], 200);
+        }
+
+        //Request is validated
+        //Crean token
+        try {
+            if (! $token = JWTAuth::attempt($credentials)) {
+                $data['title'] = 'Login Page';
+                $data['template'] = 'admin';
+                return view('index',[
+                    'success' => false,
+                    'message' => 'Login credentials are invalid.',
+                    'data' => $data
+                ]);
+            }
+        } catch (JWTException $e) {
+            $data['title'] = 'Login Page';
+            $data['template'] = 'admin';
+            return view('index',[
+                    'success' => false,
+                    'message' => 'Could not create token.',
+                    'data' => $data
+                ]);
+        }
+
+            $user = auth()->user();
+            if($user['role'] != 'user'){
+                $request->session()->put('accessToken',json_encode(auth()->user()));
+                return redirect('/dashboard');
+            } else {
+                $data['title'] = 'Login Page';
+                $data['template'] = 'admin';
+                return view('index',[
+                    'success' => false,
+                    'message' => 'Login credentials are invalid.',
+                    'data' => $data
+                ]);
+            }
+    }
+
+    public function logout_admin(Request $request) {
+        $request->session()->flush();
+        return redirect('/');
     }
 }
