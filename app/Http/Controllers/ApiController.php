@@ -83,7 +83,7 @@ class ApiController extends Controller
                 'success' => true,
                 'token' => $token,
                 'user' => auth()->user(),
-                'accessToken' => 'tUvNwpSrSIIjoGvkIkelgddkXuBYoAdU'
+                'tickerToken' => 'tUvNwpSrSIIjoGvkIkelgddkXuBYoAdU'
             ]);
         } else {
             return response()->json([
