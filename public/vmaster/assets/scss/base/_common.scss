@@ -196,3 +196,13 @@ tbody tr:hover {
   background: transparent;
   border-color: transparent;
 }
+
+@keyframes spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+input.form-control.ng-touched.ng-dirty.ng-invalid {
+  border: 2px solid #dc3545;
+}
