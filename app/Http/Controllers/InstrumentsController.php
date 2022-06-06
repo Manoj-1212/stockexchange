@@ -46,6 +46,7 @@ class InstrumentsController extends Controller
             ->join('favourites', 'favourites.instrument_id', 'instruments.instrument_token')
             ->where('favourites.user_id', '=', $user['id'])
             ->where('instruments.exchange', '=', $type)
+            ->where('instruments.expiry','>',date('Y-m-d'))
             ->select('instruments.*')
             ->get();
 
@@ -54,6 +55,7 @@ class InstrumentsController extends Controller
         $instruments = DB::table('instruments')
             ->whereNotIn('instrument_token', $favourites)
             ->where('instruments.exchange', '=', $type)
+            ->where('instruments.expiry','>',date('Y-m-d'))
             ->select('instruments.*')
             ->get();
         
@@ -69,6 +71,7 @@ class InstrumentsController extends Controller
             ->join('favourites', 'favourites.instrument_id', 'instruments.instrument_token')
             ->where('favourites.user_id', '=', $user['id'])
             ->where('instruments.exchange', '=', $type)
+            ->where('instruments.expiry','>',date('Y-m-d'))
             ->select('instruments.*')
             ->get();
     
@@ -111,6 +114,7 @@ class InstrumentsController extends Controller
 
     function buy_sell(Request $request){
         $user = JWTAuth::authenticate($this->token);
+        $brokerDetails = $user->brokerDetail()->first();
 
         $data['instrument_id'] = $request->instrument_token;
         $data['quantity'] = $request->quantity;
@@ -131,24 +135,52 @@ class InstrumentsController extends Controller
             return response()->json(['success' => false,'message' => $validator->messages()], 200);
         }
 
-        $new = new Order;
-        $new->instrument_id = $data['instrument_id'];
-        $new->user_id = $user['id'];
-        $new->amount = $data['amount'];
-        $new->qty = $data['quantity'];
-        $new->order_type = $data['order_type'];
-        $new->action = $data['action'];
-        $new->instrument_details = $data['instrument_details'];
-        $new->save();
+        $exchnage_type = Instruments::where('instrument_token', $data['instrument_id'])->first()->is_NFO_MCX();
+        if($exchnage_type == 1){
+            $usermargin = ($data['amount'] * $data['quantity'])/$brokerDetails['nfo_leverage'];
+        } else {
+            $usermargin = ($data['amount'] * 100 * $data['quantity'])/$brokerDetails['mcx_leverage'];
+        }
 
-        return response()->json(['status' => true, 'message' => "$buySell Order Place Successfully !!"]);
+        if($user['fund_balance'] > $usermargin) {
+            $new = new Order;
+            $new->instrument_id = $data['instrument_id'];
+            $new->user_id = $user['id'];
+            $new->amount = $data['amount'];
+            $new->total_amount = round($data['amount'] * $data['quantity'],2);
+            $new->qty = $data['quantity'];
+            $new->order_type = $data['order_type'];
+            $new->action = $data['action'];
+            $new->exchange = $exchnage_type;
+            $new->margin = $usermargin;
+            $new->instrument_details = $data['instrument_details'];
+            $new->status = 1;
+            $new->save();
+
+            if($data['action'] == 1) {
+                DB::table('users')->
+                    where('id', $user['id'])->
+                    update(array('fund_balance' => $user['fund_balance'] - $usermargin));
+
+                $new = new Funds;
+                $new->user_id = $user['id'];
+                $new->amount = $usermargin;
+                $new->status = 2;
+                $new->save();
+            }
+
+            return response()->json(['status' => true, 'message' => "$buySell Order Place Successfully !!"]);
+        } else {
+            return response()->json(['status' => false, 'message' => "Low wallet balance"]);
+        }
+        
 
     }
 
 
     function portfolio(Request $request){
         $user = JWTAuth::authenticate($this->token);
-        $portfolio = ['ledgerBalance' => 443, 'marginAvailable' => '0' ,'activePl' => 0,'m2m' => 523];
+        $portfolio = ['ledgerBalance' => $user['fund_balance'], 'marginAvailable' => '0' ,'activePl' => 0,'m2m' => 523];
 
         return response()->json(['status' => true, 'portfolio' => $portfolio]);
 
@@ -170,13 +202,19 @@ class InstrumentsController extends Controller
         }
 
         $trades = Order::TRADE;
-        
-        $orders = DB::table('order_checkout')
+        if($trades[$data['trade_type']] == 2){
+            $orders = DB::table('order_checkout')
+            ->whereIn('order_checkout.status', [2,3])
+            ->join('instruments', 'instruments.instrument_token', 'order_checkout.instrument_id')
+            ->select('order_checkout.*','instruments.trading_symbol',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i") as formatted_date'))
+            ->get();
+        } else {
+            $orders = DB::table('order_checkout')
             ->where('order_checkout.status', '=', $trades[$data['trade_type']])
             ->join('instruments', 'instruments.instrument_token', 'order_checkout.instrument_id')
             ->select('order_checkout.*','instruments.trading_symbol',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i") as formatted_date'))
             ->get();
-
+        }
         return response()->json(['status' => true, 'orders' => $orders]);
 
     }
@@ -222,10 +260,6 @@ class InstrumentsController extends Controller
         return response()->json(['status' => true, 'favourites' => $favourites]);
 
     }
-
-
-
-
 
 
 }

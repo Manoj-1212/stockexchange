@@ -33,6 +33,12 @@ class ApiController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'phone_number' => $request->phone,
+            'address' => $request->address,
+            'role' => 'user',
+            'fund_balance' => $request->wallet,
+            'parent_id' => $request->broker_id,
+            'status' => 1,
             'password' => bcrypt($request->password)
         ]);
 
@@ -40,7 +46,6 @@ class ApiController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'User created successfully',
-            'data' => $user
         ], Response::HTTP_OK);
     }
 
@@ -78,12 +83,12 @@ class ApiController extends Controller
     
         //Token created, return with success response and jwt token
         $user = auth()->user();
-        if($user['role'] == 'user'){
+        if($user['role'] == 'user' && $user['status'] = 1){
             return response()->json([
                 'success' => true,
                 'token' => $token,
                 'user' => auth()->user(),
-                'tickerToken' => 'COCk8PsBgJLESesCR0pt76JvaRC4yYtz'
+                'tickerToken' => 'RUrrLzz32fLzGGO4ckyECvOMK0rRm10E'
             ]);
         } else {
             return response()->json([

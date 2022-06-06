@@ -17,4 +17,14 @@ class Instruments extends Model
 
     protected $table = "instruments";
 
+
+    /**
+     * check if the user is admin
+     *
+     * @return boolean
+     */
+    public function is_NFO_MCX()
+    {
+        return $this->exchange === 'NFO' ? 1 : 2;
+    }
 }

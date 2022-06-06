@@ -17,7 +17,7 @@ class User extends Authenticatable implements JWTSubject
      * @var array
      */
     protected $fillable = [
-        'name', 'email', 'password',
+        'name', 'email', 'password', 'role', 'address', 'phone_number', 'status', 'parent_id', 'fund_balance'
     ];
 
     /**
@@ -45,6 +45,14 @@ class User extends Authenticatable implements JWTSubject
     public function getJWTCustomClaims()
     {
         return [];
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function brokerDetail()
+    {
+        return $this->belongsTo(User::class, 'parent_id');
     }
 
 }

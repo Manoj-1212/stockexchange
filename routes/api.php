@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\InstrumentsController;
+use App\Http\Controllers\BackendjobController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -23,6 +24,8 @@ Route::post('login', [ApiController::class, 'authenticate']);
 Route::post('register', [ApiController::class, 'register']);
 Route::post('login_admin', [ApiController::class, 'authenticate_admin']);
 Route::get('logout_admin', [ApiController::class, 'logout_admin']);
+Route::get('buy_order', [BackendjobController::class, 'excute_buy_order']);
+Route::get('sell_order', [BackendjobController::class, 'excute_sell_order']);
 
 
 Route::group(['middleware' => ['jwt.verify']], function() {
