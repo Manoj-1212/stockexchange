@@ -128,7 +128,7 @@ $profit_loss = mysqli_fetch_assoc($profit_loss);
                                                     <a href="edit_user.php?user_id=<?php echo $row['id']; ?>" class="btn btn-outline-info btn-rounded"><i class="fas fa-pen"></i></a>
                                                     <?php } ?>
                                             <a href="deactivate_user.php?user_id=<?php echo $row['id']; ?>" class="btn btn-outline-danger btn-rounded"><i class="fas fa-user-slash"></i></a>
-                                            <?php if($_SESSION['role'] == 'admin') { ?>
+                                            <?php if($_SESSION['role'] == 'admin' && $row['role'] == 'user') { ?>
                                             <a href="add_fund.php?user_id=<?php echo $row['id']; ?>" class="btn btn-outline-green btn-rounded"><i class="fas fa-rupee-sign"></i></a>
                                             <?php } ?>
                                             </td>
