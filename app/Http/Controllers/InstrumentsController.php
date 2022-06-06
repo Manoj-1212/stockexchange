@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Favourites;
 use App\Models\Order;
 use App\Models\Funds;
+use App\Models\Brokerage;
+use App\Models\ProfitLoss;
 
 
 class InstrumentsController extends Controller
@@ -143,21 +145,25 @@ class InstrumentsController extends Controller
         }
 
         if($user['fund_balance'] > $usermargin) {
-            $new = new Order;
-            $new->instrument_id = $data['instrument_id'];
-            $new->user_id = $user['id'];
-            $new->amount = $data['amount'];
-            $new->total_amount = round($data['amount'] * $data['quantity'],2);
-            $new->qty = $data['quantity'];
-            $new->order_type = $data['order_type'];
-            $new->action = $data['action'];
-            $new->exchange = $exchnage_type;
-            $new->margin = $usermargin;
-            $new->instrument_details = $data['instrument_details'];
-            $new->status = 1;
-            $new->save();
+            $Order = new Order;
+            $Order->instrument_id = $data['instrument_id'];
+            $Order->user_id = $user['id'];
+            $Order->amount = $data['amount'];
+            $Order->total_amount = round($data['amount'] * $data['quantity'],2);
+            $Order->qty = $data['quantity'];
+            $Order->order_type = $data['order_type'];
+            $Order->action = $data['action'];
+            $Order->exchange = $exchnage_type;
+            $Order->margin = $usermargin;
+            $Order->instrument_details = $data['instrument_details'];
+            if($data['order_type'] == 1) {
+                $Order->status = 0;
+            } else {
+                $Order->status = 1;
+            }
+            $Order->save();
 
-            if($data['action'] == 1) {
+            if($data['action'] == 1 && $data['order_type'] == 1) {
                 DB::table('users')->
                     where('id', $user['id'])->
                     update(array('fund_balance' => $user['fund_balance'] - $usermargin));
@@ -167,6 +173,74 @@ class InstrumentsController extends Controller
                 $new->amount = $usermargin;
                 $new->status = 2;
                 $new->save();
+
+            }
+
+            if($data['action'] == 2 && $data['order_type'] == 1) {
+                
+                $buydetails = DB::table('order_checkout')
+                ->where('order_checkout.status', '=', 0)
+                ->where('order_checkout.instrument_id', '=',$data['instrument_id'])
+                ->where('order_checkout.action', '=', 1)
+                ->where('order_checkout.created_at', 'like', "%".date('Y-m-d')."%")
+                ->select(DB::raw('SUM(order_checkout.qty) as buyqty'), DB::raw('SUM(order_checkout.total_amount) as amount'),DB::raw('SUM(order_checkout.margin) as margin'))
+                ->get();
+                $buydetails = json_decode($buydetails,true); 
+
+                foreach($buydetails as $buy) {
+                    if($buy['amount'] == '' && $buy['buyqty'] == ''){
+                        DB::table('order_checkout')->
+                        where('id', $Order->id)->
+                        update(array('status' => 1));
+                    } else{
+                    if($exchnage_type == 1){
+                        $brokerage = ((($data['amount'] +  ($buy['amount']/$buy['buyqty'])) * $data['quantity'])/100)*$brokerDetails['nfo_brokerage'];
+                        $profit = ($data['amount'] - ($buy['amount']/$buy['buyqty']))*$data['quantity'];
+                        $actualprofit = $profit - $brokerage;
+                        $holdingbalance = (($buy['amount']/$buy['buyqty']) * $data['quantity']) / $brokerDetails['nfo_holding'];
+                    } else {
+                        $brokerage = (((($data['amount'] * 100) +  (($buy['amount']/$buy['buyqty'])* 100)) * $data['quantity'])/100)*$brokerDetails['mcx_brokerage'];
+                        $profit = ($data['amount'] - ($buy['amount']/$buy['buyqty']))*$data['quantity']*100;
+                        $actualprofit = $profit - $brokerage;
+                        $holdingbalance = (($buy['amount']/$buy['buyqty']) * $data['quantity'] * 100) / $brokerDetails['mcx_holding'];
+                    }
+
+
+                    $balance = $user['fund_balance'] + $actualprofit + $buy['margin'];
+                    DB::table('users')->where('id', $user['id'])->update(array('fund_balance' => $balance));
+
+                    $new = new Funds;
+                    $new->user_id = $user['id'];
+                    $new->amount = $actualprofit + $buy['margin'];
+                    $new->status = 1;
+                    $new->save();
+
+
+                    $new = new Brokerage;
+                    $new->user_id = $user['id'];
+                    $new->instrument_id = $data['instrument_id'];
+                    $new->brokerage = $brokerage;
+                    $new->exchange = $exchnage_type;
+                    $new->broker_id = $brokerDetails['id'];
+                    $new->save();
+
+                    $new = new ProfitLoss;
+                    $new->user_id = $user['id'];
+                    $new->instrument_id = $data['instrument_id'];
+                    $new->profit = $profit;
+                    $new->actual_profit = $actualprofit;
+                    $new->exchange = $exchnage_type;
+                    $new->broker_id = $brokerDetails['id'];
+                    $new->save();
+
+                    DB::table('order_checkout')->
+                        where('id', $Order->id)->
+                        update(array('status' => 2));
+                    
+                    }
+
+                }
+
             }
 
             return response()->json(['status' => true, 'message' => "$buySell Order Place Successfully !!"]);
@@ -206,11 +280,13 @@ class InstrumentsController extends Controller
             $orders = DB::table('order_checkout')
             ->whereIn('order_checkout.status', [2,3])
             ->join('instruments', 'instruments.instrument_token', 'order_checkout.instrument_id')
+            ->orderby('order_checkout.created_at','DESC')
             ->select('order_checkout.*','instruments.trading_symbol',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i") as formatted_date'))
             ->get();
         } else {
             $orders = DB::table('order_checkout')
             ->where('order_checkout.status', '=', $trades[$data['trade_type']])
+            ->orderby('order_checkout.created_at','DESC')
             ->join('instruments', 'instruments.instrument_token', 'order_checkout.instrument_id')
             ->select('order_checkout.*','instruments.trading_symbol',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i") as formatted_date'))
             ->get();
