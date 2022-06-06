@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 use Hash;
 use Session;
 
@@ -84,11 +85,15 @@ class ApiController extends Controller
         //Token created, return with success response and jwt token
         $user = auth()->user();
         if($user['role'] == 'user' && $user['status'] = 1){
+
+            $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
+            $kite_setting = json_decode($kite_setting,true);
+
             return response()->json([
                 'success' => true,
                 'token' => $token,
                 'user' => auth()->user(),
-                'tickerToken' => 'RUrrLzz32fLzGGO4ckyECvOMK0rRm10E'
+                'tickerToken' => $kite_setting[0]['access_token']
             ]);
         } else {
             return response()->json([

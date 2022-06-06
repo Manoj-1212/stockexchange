@@ -36,6 +36,9 @@ class BackendjobController extends Controller
 
     public function excute_buy_order(Request $request){
 
+        $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
+        $kite_setting = json_decode($kite_setting,true);
+        
         $trades = Order::TRADE;
         
         $orders = DB::table('order_checkout')
@@ -51,7 +54,7 @@ class BackendjobController extends Controller
                 CURLOPT_URL => $url,
                 CURLOPT_HTTPGET => true,
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => array('Authorization: token bxgemb4liqbi58ki:RUrrLzz32fLzGGO4ckyECvOMK0rRm10E')
+                CURLOPT_HTTPHEADER => array('Authorization: token '.$kite_setting[0]['api_key'].':'.$kite_setting[0]['access_token'])
             );
             curl_setopt_array($ch, $curlConfig);
             $result = curl_exec($ch);
@@ -73,6 +76,9 @@ class BackendjobController extends Controller
 
     public function excute_buy_order_day_end(Request $request){
 
+        $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
+        $kite_setting = json_decode($kite_setting,true);
+
         $trades = Order::TRADE;
         
         $orders = DB::table('order_checkout')
@@ -92,7 +98,7 @@ class BackendjobController extends Controller
                 CURLOPT_URL => $url,
                 CURLOPT_HTTPGET => true,
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => array('Authorization: token bxgemb4liqbi58ki:RUrrLzz32fLzGGO4ckyECvOMK0rRm10E')
+                CURLOPT_HTTPHEADER => array('Authorization: token '.$kite_setting[0]['api_key'].':'.$kite_setting[0]['access_token'])
             );
             curl_setopt_array($ch, $curlConfig);
             $result = curl_exec($ch);
@@ -139,6 +145,9 @@ class BackendjobController extends Controller
 
     public function excute_sell_order(Request $request){
 
+        $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
+        $kite_setting = json_decode($kite_setting,true);
+
         $trades = Order::TRADE;
         
         $orders = DB::table('order_checkout')
@@ -160,7 +169,7 @@ class BackendjobController extends Controller
                 CURLOPT_URL => $url,
                 CURLOPT_HTTPGET => true,
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => array('Authorization: token bxgemb4liqbi58ki:RUrrLzz32fLzGGO4ckyECvOMK0rRm10E')
+                CURLOPT_HTTPHEADER => array('Authorization: token '.$kite_setting[0]['api_key'].':'.$kite_setting[0]['access_token'])
             );
             curl_setopt_array($ch, $curlConfig);
             $result = curl_exec($ch);
@@ -241,6 +250,9 @@ class BackendjobController extends Controller
 
 public function excute_sell_order_day_end(Request $request){
 
+        $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
+        $kite_setting = json_decode($kite_setting,true);
+
         $trades = Order::TRADE;
         
         $orders = DB::table('order_checkout')
@@ -264,6 +276,9 @@ public function excute_sell_order_day_end(Request $request){
 
 public function excute_sell_order_settlement($orderid){
 
+            $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
+            $kite_setting = json_decode($kite_setting,true);
+
             $buydetails = DB::table('order_checkout')
                 ->where('order_checkout.id', '=',$orderid)
                 ->select('order_checkout.*')
@@ -281,7 +296,7 @@ public function excute_sell_order_settlement($orderid){
                 CURLOPT_URL => $url,
                 CURLOPT_HTTPGET => true,
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => array('Authorization: token bxgemb4liqbi58ki:RUrrLzz32fLzGGO4ckyECvOMK0rRm10E')
+                CURLOPT_HTTPHEADER => array('Authorization: token '.$kite_setting[0]['api_key'].':'.$kite_setting[0]['access_token'])
             );
             curl_setopt_array($ch, $curlConfig);
             $result = curl_exec($ch);
