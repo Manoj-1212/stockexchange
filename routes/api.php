@@ -42,4 +42,5 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::get('profile', [InstrumentsController::class, 'trading_profile']);
     Route::post('change_password',[ApiController::class, 'change_password']);
     Route::delete('remove_favourites',[InstrumentsController::class, 'remove_favourites']);
+    Route::get('cancel_order',[InstrumentsController::class, 'cancel_order']);
 });

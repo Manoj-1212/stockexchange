@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\Funds;
 use App\Models\Brokerage;
 use App\Models\ProfitLoss;
+use DateTime;
 
 
 class InstrumentsController extends Controller
@@ -58,6 +59,7 @@ class InstrumentsController extends Controller
             ->whereNotIn('instrument_token', $favourites)
             ->where('instruments.exchange', '=', $type)
             ->where('instruments.expiry','>',date('Y-m-d'))
+            ->where('instruments.expiry','<',date('Y-m-d', strtotime('+1 month', strtotime(date('Y-m-t')))))
             ->select('instruments.*')
             ->get();
         
@@ -107,6 +109,8 @@ class InstrumentsController extends Controller
         $instruments = DB::table('instruments')
             ->whereNotIn('instrument_token', $favourites)
             ->where('instruments.exchange', '=', $type)
+            ->where('instruments.expiry','>',date('Y-m-d'))
+            ->where('instruments.expiry','<',date('Y-m-d', strtotime('+1 month', strtotime(date('Y-m-t')))))
             ->select('instruments.*')
             ->get();
         
@@ -115,6 +119,29 @@ class InstrumentsController extends Controller
     }
 
     function buy_sell(Request $request){
+
+        $dt= date('Y-m-d');
+        $dt1 = strtotime($dt);
+        $dt2 = date("l", $dt1);
+        $dt3 = strtolower($dt2);
+        
+        if(($dt3 == "saturday" ) || ($dt3 == "sunday"))
+            {
+                return response()->json(['status' => false, 'message' => "Market Not Open"]);
+            } 
+        
+
+        $current_time = date('h:i a');
+        $sunrise = "9:15 am";
+        $sunset = "3:15 pm";
+        $date1 = DateTime::createFromFormat('h:i a', $current_time);
+        $date2 = DateTime::createFromFormat('h:i a', $sunrise);
+        $date3 = DateTime::createFromFormat('h:i a', $sunset);
+        if ($date1 < $date2 && $date1 > $date3)
+        {
+           return response()->json(['status' => false, 'message' => "Market Not Open"]);
+        }
+
         $user = JWTAuth::authenticate($this->token);
         $brokerDetails = $user->brokerDetail()->first();
 
@@ -254,7 +281,7 @@ class InstrumentsController extends Controller
 
     function portfolio(Request $request){
         $user = JWTAuth::authenticate($this->token);
-        $portfolio = ['ledgerBalance' => $user['fund_balance'], 'marginAvailable' => '0' ,'activePl' => 0,'m2m' => 523];
+        $portfolio = ['ledgerBalance' => $user['fund_balance'], 'marginAvailable' => '0' ,'activePl' => 0,'m2m' => $user['fund_balance']];
 
         return response()->json(['status' => true, 'portfolio' => $portfolio]);
 
@@ -262,6 +289,9 @@ class InstrumentsController extends Controller
 
 
     function trades(Request $request){
+
+        list($start_date, $end_date) = $this->x_week_range(date('Y-m-d'));
+
         $user = JWTAuth::authenticate($this->token);
         $data['trade_type'] = $request->type;
 
@@ -279,16 +309,18 @@ class InstrumentsController extends Controller
         if($trades[$data['trade_type']] == 2){
             $orders = DB::table('order_checkout')
             ->whereIn('order_checkout.status', [2,3])
+            ->where('order_checkout.created_at', '>=', $start_date." 00:00:00")
+            ->where('order_checkout.created_at', '<=', $end_date." 23:59:59")
             ->join('instruments', 'instruments.instrument_token', 'order_checkout.instrument_id')
             ->orderby('order_checkout.created_at','DESC')
-            ->select('order_checkout.*','instruments.trading_symbol',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i") as formatted_date'))
+            ->select('order_checkout.*','instruments.trading_symbol',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i:%s") as formatted_date'))
             ->get();
         } else {
             $orders = DB::table('order_checkout')
             ->where('order_checkout.status', '=', $trades[$data['trade_type']])
             ->orderby('order_checkout.created_at','DESC')
             ->join('instruments', 'instruments.instrument_token', 'order_checkout.instrument_id')
-            ->select('order_checkout.*','instruments.trading_symbol',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i") as formatted_date'))
+            ->select('order_checkout.*','instruments.trading_symbol',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i:%s") as formatted_date'))
             ->get();
         }
         return response()->json(['status' => true, 'orders' => $orders]);
@@ -335,6 +367,25 @@ class InstrumentsController extends Controller
     
         return response()->json(['status' => true, 'favourites' => $favourites]);
 
+    }
+
+    function cancel_order(Request $request) {
+
+        $user = JWTAuth::authenticate($this->token);
+
+        $id = $request->id;
+        DB::table('order_checkout')->
+                where('id', $id)->
+                update(array('status' => 3));
+
+        return response()->json(['status' => true, 'message' => "Trade is cancelled"]);
+    }
+
+    function x_week_range($date) {
+    $ts = strtotime($date);
+    $start = (date('w', $ts) == 0) ? $ts : strtotime('last sunday', $ts);
+    return array(date('Y-m-d', $start),
+                 date('Y-m-d', strtotime('next saturday', $start)));
     }
 
 
