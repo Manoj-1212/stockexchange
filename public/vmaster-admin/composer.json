@@ -1,5 +1,0 @@
-{
-    "require": {
-        "zerodha/phpkiteconnect": "^4.0"
-    }
-}

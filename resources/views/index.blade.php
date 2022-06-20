@@ -12,6 +12,6 @@
 
 <body>
   <app-root></app-root>
-<script src="runtime.fffa370b34171da15c04.js" defer></script><script src="polyfills.6e04d3479494a631b187.js" defer></script><script src="scripts.3604a9e8f2c99e6de855.js" defer></script><script src="main.670e59bb094da6d5afe2.js" defer></script>
+<script src="runtime.fffa370b34171da15c04.js" defer></script><script src="polyfills.6e04d3479494a631b187.js" defer></script><script src="scripts.3604a9e8f2c99e6de855.js" defer></script><script src="main.c71dc8894644d830a8ad.js" defer></script>
 
 </body></html>
