@@ -68,6 +68,25 @@ class BackendjobController extends Controller
                 DB::table('order_checkout')->
                 where('id', $row['id'])->
                 update(array('status' => 0));
+
+                $user = User::where('id', $row['user_id'])->first();
+
+                $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
+                    if($exchnage_type == 1){
+                        $usermargin = ($row['amount'] * $row['quantity'])/$brokerDetails['nfo_leverage'];
+                    } else {
+                        $usermargin = ($row['amount'] * 100 * $row['quantity'])/$brokerDetails['mcx_leverage'];
+                    }
+                
+                DB::table('users')->
+                    where('id', $user['id'])->
+                    update(array('fund_balance' => $user['fund_balance'] - $usermargin));
+
+                $new = new Funds;
+                $new->user_id = $user['id'];
+                $new->amount = $usermargin;
+                $new->status = 2;
+                $new->save();
             } 
         }
 
