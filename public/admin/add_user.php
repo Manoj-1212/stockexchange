@@ -164,7 +164,7 @@ $brokers = mysqli_query($conn, $sql);
             };
             // send ajax
             $.ajax({
-                url: 'http://localhost:8000/api/register', // url where to submit the request
+                url: 'https://learnntrades.com/api/register', // url where to submit the request
                 type : "POST", // type of action POST || GET
                 dataType : 'json', // data type
                 data : formData, // post data || get data
