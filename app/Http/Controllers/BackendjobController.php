@@ -77,7 +77,7 @@ class BackendjobController extends Controller
                     } else {
                         $usermargin = ($row['amount'] * 100 * $row['quantity'])/$brokerDetails['mcx_leverage'];
                     }
-                
+
                 DB::table('users')->
                     where('id', $user['id'])->
                     update(array('fund_balance' => $user['fund_balance'] - $usermargin));
@@ -87,6 +87,8 @@ class BackendjobController extends Controller
                 $new->amount = $usermargin;
                 $new->status = 2;
                 $new->save();
+
+                return response()->json(['status' => true, 'message' => "Request Processed"]);
             } 
         }
 
@@ -103,8 +105,9 @@ class BackendjobController extends Controller
         $orders = DB::table('order_checkout')
             ->whereIn('order_checkout.status', [0,1] )
             ->where('order_checkout.action', '=', 1)
+            ->where('order_checkout.exchange', '=', 1)
             ->select('order_checkout.*')
-            ->get();
+            ->limit(10)->orderBy('id', 'ASC')->get();
         $orders = json_decode($orders,true); 
         foreach($orders as $row){
             $user = User::where('id', $row['user_id'])->first();
@@ -149,7 +152,78 @@ class BackendjobController extends Controller
                     } else {
                         DB::table('order_checkout')->
                         where('id', $row['id'])->
-                        update(array('status' => 2));
+                        update(array('status' => 2,'processed_amount' => $last_price,'processed_date' => date('Y-m-d H:i:s')));
+                    }
+            }
+
+            if($row['status'] == 1){
+                DB::table('order_checkout')->
+                where('id', $row['id'])->
+                update(array('status' => 3));
+            } 
+        }
+
+    }
+
+
+    public function excute_buy_order_day_end_mcx(Request $request){
+
+        $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
+        $kite_setting = json_decode($kite_setting,true);
+
+        $trades = Order::TRADE;
+        
+        $orders = DB::table('order_checkout')
+            ->whereIn('order_checkout.status', [0,1] )
+            ->where('order_checkout.action', '=', 1)
+            ->where('order_checkout.exchange', '=', 2)
+            ->select('order_checkout.*')
+            ->limit(10)->orderBy('id', 'ASC')->get();
+        $orders = json_decode($orders,true); 
+        foreach($orders as $row){
+            $user = User::where('id', $row['user_id'])->first();
+            $brokerDetails = $user->brokerDetail()->first();
+            $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
+
+            $url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
+            $ch = curl_init();
+            $curlConfig = array(
+                CURLOPT_URL => $url,
+                CURLOPT_HTTPGET => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => array('Authorization: token '.$kite_setting[0]['api_key'].':'.$kite_setting[0]['access_token'])
+            );
+            curl_setopt_array($ch, $curlConfig);
+            $result = curl_exec($ch);
+            $data = json_decode($result,true);
+            $last_price = $data['data'][$row['instrument_id']]['last_price'];   
+            $high_price = $data['data'][$row['instrument_id']]['ohlc']['high'];  
+            $low_price = $data['data'][$row['instrument_id']]['ohlc']['low'];   
+            curl_close($ch);
+
+            if($row['status'] == 0){
+                    if($exchnage_type == 1){
+                        $holdingbalance = ($row['amount'] * $row['qty']) / $brokerDetails['nfo_holding'];
+                    } else {
+                        $holdingbalance = ($row['amount'] * $row['qty'] * 100) / $brokerDetails['mcx_holding'];
+                    }
+
+                    $selldetails = DB::table('order_checkout')
+                    ->where('order_checkout.status', '=', 2)
+                    ->where('order_checkout.instrument_id', '=',$row['instrument_id'])
+                    ->where('order_checkout.action', '=', 2)
+                    ->where('order_checkout.created_at', 'like', "%".date('Y-m-d')."%")
+                    ->select('order_checkout.id')
+                    ->get();
+                    $selldetails = json_decode($selldetails,true); 
+                    if(empty($selldetails) && $user['fund_balance'] > $holdingbalance){
+                        echo "keep Stock";
+                    } else if(empty($selldetails) && $user['fund_balance'] < $holdingbalance){
+                        $this->excute_sell_order_settlement($row['id']);
+                    } else {
+                        DB::table('order_checkout')->
+                        where('id', $row['id'])->
+                        update(array('status' => 2,'processed_amount' => $last_price,'processed_date' => date('Y-m-d H:i:s')));
                     }
             }
 
@@ -208,7 +282,9 @@ class BackendjobController extends Controller
                 
                 foreach($buydetails as $buy) {
                     if($buy['amount'] == '' && $buy['buyqty'] == ''){
-                        echo "No Buy done";
+                        DB::table('order_checkout')->
+                        where('id', $row['id'])->
+                        update(array('status' => 0));
                     } else {
                     if($exchnage_type == 1){
                         $brokerage = ((($row['amount'] +  ($buy['amount']/$buy['buyqty'])) * $row['qty'])/100)*$brokerDetails['nfo_brokerage'];
@@ -251,7 +327,7 @@ class BackendjobController extends Controller
 
                     DB::table('order_checkout')->
                         where('id', $row['id'])->
-                        update(array('status' => 2));
+                        update(array('status' => 2,'processed_amount' => round(($buy['amount']/$buy['buyqty']),2),'processed_date' => date('Y-m-d H:i:s')));
                 }
                        
                 }
@@ -277,8 +353,36 @@ public function excute_sell_order_day_end(Request $request){
         $orders = DB::table('order_checkout')
             ->where('order_checkout.status', '=', 1)
             ->where('order_checkout.action', '=', 2)
+            ->where('order_checkout.exchange', '=', 1)
             ->select('order_checkout.*',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i") as formatted_date'))
-            ->get();
+            ->limit(10)->orderBy('id', 'ASC')->get();
+        $orders = json_decode($orders,true); 
+
+        foreach($orders as $row){
+
+            DB::table('order_checkout')->
+                    where('id', $row['id'])->
+                    update(array('status' => 3));
+            
+        }
+
+
+    }
+
+
+public function excute_sell_order_day_end_mcx(Request $request){
+
+        $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
+        $kite_setting = json_decode($kite_setting,true);
+
+        $trades = Order::TRADE;
+        
+        $orders = DB::table('order_checkout')
+            ->where('order_checkout.status', '=', 1)
+            ->where('order_checkout.action', '=', 2)
+            ->where('order_checkout.exchange', '=', 2)
+            ->select('order_checkout.*',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i") as formatted_date'))
+            ->limit(10)->orderBy('id', 'ASC')->get();
         $orders = json_decode($orders,true); 
 
         foreach($orders as $row){
@@ -363,7 +467,7 @@ public function excute_sell_order_settlement($orderid){
 
                     DB::table('order_checkout')->
                         where('id', $row['id'])->
-                        update(array('status' => 2));
+                        update(array('status' => 2,'processed_amount' => $last_price,'processed_date' => date('Y-m-d H:i:s')));
                    
 
     }

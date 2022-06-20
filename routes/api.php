@@ -28,6 +28,8 @@ Route::get('buy_order', [BackendjobController::class, 'excute_buy_order']);
 Route::get('sell_order', [BackendjobController::class, 'excute_sell_order']);
 Route::get('buy_order_end', [BackendjobController::class, 'excute_buy_order_day_end']);
 Route::get('sell_order_end', [BackendjobController::class, 'excute_sell_order_day_end']);
+Route::get('buy_order_end_mcx', [BackendjobController::class, 'excute_buy_order_day_end_mcx']);
+Route::get('sell_order_end_mcx', [BackendjobController::class, 'excute_sell_order_day_end_mcx']);
 
 
 Route::group(['middleware' => ['jwt.verify']], function() {

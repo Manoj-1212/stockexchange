@@ -109,7 +109,7 @@ $active_sell_mcx = mysqli_fetch_assoc($active_sell_mcx);
             <!-- end of navbar navigation -->
             <div class="content">
                 <div class="container">
-                    <?php if($_SESSION['role'] == 'admin') { ?>
+                    <?php /* if($_SESSION['role'] == 'admin') { ?>
                     <div class="row">
                         <div class="col-md-12 col-lg-12">
                             <div class="card">
@@ -163,7 +163,7 @@ $active_sell_mcx = mysqli_fetch_assoc($active_sell_mcx);
                             </div>
                         </div>
                     </div>
-                <?php } ?>
+                <?php } */?>
                     <div class="row">
                         <div class="col-sm-6 col-md-6 col-lg-4 mt-4">
                             <div class="card">
@@ -384,7 +384,7 @@ $active_sell_mcx = mysqli_fetch_assoc($active_sell_mcx);
                         
 
                     </div>
-                    <?php if($_SESSION['role'] == 'admin') { ?>
+                    <?php /* if($_SESSION['role'] == 'admin') { ?>
                     <div class="row">
                         <div class="col-sm-6 col-md-6 col-lg-3">
                             <div class="card">
@@ -439,7 +439,7 @@ $active_sell_mcx = mysqli_fetch_assoc($active_sell_mcx);
                             </div>
                         </div>
                     </div>
-                <?php } ?>
+                <?php } */ ?>
                 </div>
             </div>
         </div>

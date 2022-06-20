@@ -1,3 +1,23 @@
+<?php  
+session_start();
+if(empty($_SESSION)){
+    header('location: index.php');
+}
+
+include_once('database.php');
+// Create connection
+$conn = mysqli_connect($servername, $username, $password, $dbname);
+// Check connection
+if (!$conn) {
+    die("Connection failed: " . mysqli_connect_error());
+}
+
+
+
+$sql = "select instrument_id from order_checkout where status = 0 group by instrument_id";
+$closed = mysqli_query($conn, $sql);
+
+?>
 <!doctype html>
 <html lang="en">
 
@@ -37,89 +57,51 @@
                                         <thead>
                                             <tr>
                                                 <th>Script</th>
-                                                <th>Active Buy</th>
-                                                <th>Active Sell</th>
-                                                <th>Active Buy Rate</th>
-                                                <th>Active Sell Rate</th>
-                                                <th>Total</th>
-                                                <th>Net</th>
-                                                <th>M2m</th>
+                                                <th>Lots Buy</th>
+                                                <th>Lots Sell</th>
+                                                <th>Avg Buy Rate</th>
+                                                <th>Avg Sell Rate</th>
+                                                <th>Profit/Loss</th>
+                                                <th>Brokerage</th>
+                                                <th>Net P/L</th>
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            <?php while($row = mysqli_fetch_assoc($closed)){ 
+                            $sql = "select * from instruments where instrument_token = ".$row['instrument_id'];
+$instruments = mysqli_query($conn, $sql);  
+$instruments = mysqli_fetch_assoc($instruments); 
+
+$sql = "select sum(qty) as qty, sum(total_amount) as amount from order_checkout where status = 0 and action = 1 and instrument_id = ".$row['instrument_id'];
+$order_checkout_buy = mysqli_query($conn, $sql);  
+$order_checkout_buy = mysqli_fetch_assoc($order_checkout_buy);    
+
+$sql = "select sum(qty) as qty, sum(total_amount) as amount from order_checkout where status = 0 and action = 2 and instrument_id = ".$row['instrument_id'];
+$order_checkout_sell = mysqli_query($conn, $sql);  
+$order_checkout_sell = mysqli_fetch_assoc($order_checkout_sell);  
+
+$sql = "select sum(brokerage) as brokerage from brokerage where instrument_id = ".$row['instrument_id'];
+$brokerage = mysqli_query($conn, $sql);  
+$brokerage = mysqli_fetch_assoc($brokerage); 
+
+$sql = "select sum(profit) as profit, sum(actual_profit) as actual_profit from profit_loss where instrument_id = ".$row['instrument_id'];
+$profit_loss = mysqli_query($conn, $sql);  
+$profit_loss = mysqli_fetch_assoc($profit_loss); 
+
+                                            ?>
                                             <tr>
-                                                <td>HDFC</td>
-                                                <td>100</td>
-                                                <td>5%</td>
-                                                <td>234</td>
-                                                <td>787</td>
-                                                <td>234</td>
-                                                <td>787</td>
-                                                <td>787</td>
+                                                <td><?php echo $instruments['trading_symbol']; ?></td>
+                                                <td><?php echo $order_checkout_buy['qty']; ?></td>
+                                                <td><?php echo $order_checkout_sell['qty']; ?></td>
+                                                <td><?php echo round($order_checkout_buy['amount']/$order_checkout_buy['qty'],2); ?></td>
+                                                <td><?php echo round($order_checkout_sell['amount']/$order_checkout_sell['qty'],2); ?></td>
+                                                <td><?php echo $profit_loss['profit']; ?></td>
+                                                <td><?php echo round($brokerage['brokerage'],4); ?></td>
+                                                <td><?php echo round($profit_loss['actual_profit'],4); ?></td>
                                             </tr>
-                                            <tr>
-                                                <td>TCS</td>
-                                                <td>233</td>
-                                                <td>2%</td>
-                                                <td>345</td>
-                                                <td>676</td>
-                                                <td>234</td>
-                                                <td>787</td>
-                                                <td>787</td>
-                                            </tr>
-                                            <tr>
-                                                <td>TATA ELEXY</td>
-                                                <td>456</td>
-                                                <td>-.05%</td>
-                                                <td>532</td>
-                                                <td>567</td>
-                                                <td>234</td>
-                                                <td>787</td>
-                                                <td>787</td>
-                                            </tr>
-                                            <tr>
-                                                <td>UST</td>
-                                                <td>864</td>
-                                                <td>8%</td>
-                                                <td>809</td>
-                                                <td>456</td>
-                                                <td>234</td>
-                                                <td>787</td>
-                                                <td>787</td>
-                                            </tr>
-                                            <tr>
-                                                <td>TATA CHEMICALS</td>
-                                                <td>355</td>
-                                                <td>1.5%</td>
-                                                <td>567</td>
-                                                <td>345</td>
-                                                <td>234</td>
-                                                <td>787</td>
-                                                <td>787</td>
-                                            </tr>
-                                            <tr>
-                                                <td>ADANI PORT</td>
-                                                <td>134</td>
-                                                <td>5.8%</td>
-                                                <td>353</td>
-                                                <td>234</td>
-                                                <td>234</td>
-                                                <td>787</td>
-                                                <td>787</td>
-                                            </tr>
-                                            <tr>
-                                                <td>GRAPHITE</td>
-                                                <td>764</td>
-                                                <td>4.8%</td>
-                                                <td>239</td>
-                                                <td>123</td>
-                                                <td>234</td>
-                                                <td>787</td>
-                                                <td>787</td>
-                                            </tr>
+                                            <?php } ?>
                                             
                                         </tbody>
-                                    </table>
                                 </div>
                             </div>
                         </div>
