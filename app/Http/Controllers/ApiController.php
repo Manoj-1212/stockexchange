@@ -84,7 +84,7 @@ class ApiController extends Controller
     
         //Token created, return with success response and jwt token
         $user = auth()->user();
-        if($user['role'] == 'user' && $user['status'] = 1){
+        if($user['role'] == 'user' && $user['status'] == 1){
 
             $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
             $kite_setting = json_decode($kite_setting,true);
