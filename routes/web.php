@@ -14,7 +14,7 @@ use App\Http\Controllers\DashboardController;
 |
 */
 
-Route::get('/', function () {
+Route::any('/{any}', function () {
     $data['title'] = 'Login Page';
     $data['template'] = 'admin';
     return view('index',['data' => $data]);
