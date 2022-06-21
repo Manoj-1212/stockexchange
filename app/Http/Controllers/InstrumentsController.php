@@ -167,8 +167,10 @@ class InstrumentsController extends Controller
         $exchnage_type = Instruments::where('instrument_token', $data['instrument_id'])->first()->is_NFO_MCX();
         if($exchnage_type == 1){
             $usermargin = ($data['amount'] * $data['quantity'])/$brokerDetails['nfo_leverage'];
+            $holdingbalance = ($data['amount'] * $data['quantity']) / $brokerDetails['nfo_holding'];
         } else {
             $usermargin = ($data['amount'] * 100 * $data['quantity'])/$brokerDetails['mcx_leverage'];
+            $holdingbalance = ($data['amount'] * $data['quantity'] * 100) / $brokerDetails['mcx_holding'];
         }
 
         if($user['fund_balance'] > $usermargin) {
@@ -183,6 +185,7 @@ class InstrumentsController extends Controller
             $Order->action = $data['action'];
             $Order->exchange = $exchnage_type;
             $Order->margin = $usermargin;
+            $Order->holding_balance = $holdingbalance;
             $Order->instrument_details = $data['instrument_details'];
             if($data['order_type'] == 1) {
                 $Order->status = 0;
