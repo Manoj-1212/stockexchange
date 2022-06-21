@@ -20,6 +20,12 @@ Route::any('/{any}', function () {
     return view('index',['data' => $data]);
 });
 
+Route::any('/', function () {
+    $data['title'] = 'Login Page';
+    $data['template'] = 'admin';
+    return view('index',['data' => $data]);
+});
+
 Route::group(['middleware' => ['revalidate']], function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
 });
