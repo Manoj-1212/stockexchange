@@ -130,10 +130,16 @@ class InstrumentsController extends Controller
                 return response()->json(['status' => false, 'message' => "Market Not Open"]);
             } 
         
+        $exchnage_type = Instruments::where('instrument_token', $request->instrument_token)->first()->is_NFO_MCX();
 
         $current_time = date('h:i a');
-        $sunrise = "9:15 am";
-        $sunset = "3:15 pm";
+        if($exchnage_type == 1){}
+            $sunrise = "9:15 am";
+            $sunset = "3:30 pm";
+        } else {
+            $sunrise = "9:00 am";
+            $sunset = "11:30 pm";
+        }
         $date1 = DateTime::createFromFormat('h:i a', $current_time);
         $date2 = DateTime::createFromFormat('h:i a', $sunrise);
         $date3 = DateTime::createFromFormat('h:i a', $sunset);
@@ -164,7 +170,7 @@ class InstrumentsController extends Controller
             return response()->json(['success' => false,'message' => $validator->messages()], 200);
         }
 
-        $exchnage_type = Instruments::where('instrument_token', $data['instrument_id'])->first()->is_NFO_MCX();
+        
         if($exchnage_type == 1){
             $usermargin = ($data['amount'] * $data['quantity'])/$brokerDetails['nfo_leverage'];
             $holdingbalance = ($data['amount'] * $data['quantity']) / $brokerDetails['nfo_holding'];
