@@ -133,7 +133,7 @@ class InstrumentsController extends Controller
         $exchnage_type = Instruments::where('instrument_token', $request->instrument_token)->first()->is_NFO_MCX();
 
         $current_time = date('h:i a');
-        if($exchnage_type == 1){}
+        if($exchnage_type == 1){
             $sunrise = "9:15 am";
             $sunset = "3:30 pm";
         } else {
