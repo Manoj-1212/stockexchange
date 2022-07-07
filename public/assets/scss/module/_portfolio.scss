@@ -2,14 +2,26 @@
 	padding: 10px;
 }
 .card {
-	width: 450px;
-	box-shadow: #00000033 0px 2px 14px -6px;
 	border-radius: 5px;
 	padding: 10px;
-	border: 1px solid #f2f4f9;
 	margin: 15px 0;
 }
 .porfolio-title {
 	color: #3a91ef;
 	display: block;
+}
+
+
+
+@media (min-width: 768px) {
+	.card {
+		width: 450px;
+	}
+	.card {
+		box-shadow: #00000033 0px 2px 14px -6px;
+		border-radius: 5px;
+		padding: 10px;
+		border: 1px solid #f2f4f9;
+		margin: 15px 0;
+	}
 }

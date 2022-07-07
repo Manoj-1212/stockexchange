@@ -36,6 +36,8 @@ class BackendjobController extends Controller
 
     public function excute_buy_order(Request $request){
 
+        $this->token = $request->bearerToken();
+        $user = JWTAuth::authenticate($this->token);
         $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
         $kite_setting = json_decode($kite_setting,true);
         
@@ -44,6 +46,7 @@ class BackendjobController extends Controller
         $orders = DB::table('order_checkout')
             ->where('order_checkout.status', '=', 1)
             ->where('order_checkout.action', '=', 1)
+            ->where('order_checkout.user_id', '=', $user['id'])
             ->select('order_checkout.*',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i") as formatted_date'))
             ->get();
         $orders = json_decode($orders,true); 
@@ -64,18 +67,22 @@ class BackendjobController extends Controller
             $low_price = $data['data'][$row['instrument_id']]['ohlc']['low'];   
             curl_close($ch);
 
-            if(($row['amount'] >= $last_price - 4) && ($row['amount'] <= $last_price + 4)){
+            if(($row['amount'] >= $last_price - 1) && ($row['amount'] <= $last_price + 1)){
                 DB::table('order_checkout')->
                 where('id', $row['id'])->
                 update(array('status' => 0));
 
                 $user = User::where('id', $row['user_id'])->first();
-
+                $brokerDetails = $user->brokerDetail()->first();
                 $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
+
+                $instrument_details = Instruments::where('instrument_token', $row['instrument_id'])->get();
+                $instrument_details = json_decode($instrument_details,true);
+
                     if($exchnage_type == 1){
-                        $usermargin = ($row['amount'] * $row['quantity'])/$brokerDetails['nfo_leverage'];
+                        $usermargin = ($row['amount'] * $row['qty'])/$brokerDetails['nfo_leverage'];
                     } else {
-                        $usermargin = ($row['amount'] * 100 * $row['quantity'])/$brokerDetails['mcx_leverage'];
+                        $usermargin = ($row['amount'] * $instrument_details[0]['lot_size'] * $row['qty'])/$brokerDetails['mcx_leverage'];
                     }
 
                 DB::table('users')->
@@ -114,6 +121,9 @@ class BackendjobController extends Controller
             $brokerDetails = $user->brokerDetail()->first();
             $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
 
+            $instrument_details = Instruments::where('instrument_token', $row['instrument_id'])->get();
+            $instrument_details = json_decode($instrument_details,true);
+
             $url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
             $ch = curl_init();
             $curlConfig = array(
@@ -134,7 +144,7 @@ class BackendjobController extends Controller
                     if($exchnage_type == 1){
                         $holdingbalance = ($row['amount'] * $row['qty']) / $brokerDetails['nfo_holding'];
                     } else {
-                        $holdingbalance = ($row['amount'] * $row['qty'] * 100) / $brokerDetails['mcx_holding'];
+                        $holdingbalance = ($row['amount'] * $row['qty'] * $instrument_details[0]['lot_size']) / $brokerDetails['mcx_holding'];
                     }
 
                     $selldetails = DB::table('order_checkout')
@@ -185,6 +195,9 @@ class BackendjobController extends Controller
             $brokerDetails = $user->brokerDetail()->first();
             $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
 
+            $instrument_details = Instruments::where('instrument_token', $row['instrument_id'])->get();
+            $instrument_details = json_decode($instrument_details,true);
+
             $url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
             $ch = curl_init();
             $curlConfig = array(
@@ -205,7 +218,7 @@ class BackendjobController extends Controller
                     if($exchnage_type == 1){
                         $holdingbalance = ($row['amount'] * $row['qty']) / $brokerDetails['nfo_holding'];
                     } else {
-                        $holdingbalance = ($row['amount'] * $row['qty'] * 100) / $brokerDetails['mcx_holding'];
+                        $holdingbalance = ($row['amount'] * $row['qty'] * $instrument_details[0]['lot_size']) / $brokerDetails['mcx_holding'];
                     }
 
                     $selldetails = DB::table('order_checkout')
@@ -238,6 +251,9 @@ class BackendjobController extends Controller
 
     public function excute_sell_order(Request $request){
 
+        $this->token = $request->bearerToken();
+        $user = JWTAuth::authenticate($this->token);
+
         $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
         $kite_setting = json_decode($kite_setting,true);
 
@@ -246,6 +262,7 @@ class BackendjobController extends Controller
         $orders = DB::table('order_checkout')
             ->where('order_checkout.status', '=', 1)
             ->where('order_checkout.action', '=', 2)
+            ->where('order_checkout.user_id', '=', $user['id'])
             ->select('order_checkout.*')
             ->get();
         $orders = json_decode($orders,true); 
@@ -255,6 +272,9 @@ class BackendjobController extends Controller
             $brokerDetails = $user->brokerDetail()->first();
 
             $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
+
+            $instrument_details = Instruments::where('instrument_token', $row['instrument_id'])->get();
+            $instrument_details = json_decode($instrument_details,true);
 
             $url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
             $ch = curl_init();
@@ -292,10 +312,10 @@ class BackendjobController extends Controller
                         $actualprofit = $profit - $brokerage;
                         $holdingbalance = (($buy['amount']/$buy['buyqty']) * $row['qty']) / $brokerDetails['nfo_holding'];
                     } else {
-                        $brokerage = (((($row['amount'] * 100) +  (($buy['amount']/$buy['buyqty'])* 100)) * $row['qty'])/100)*$brokerDetails['mcx_brokerage'];
-                        $profit = ($row['amount'] - ($buy['amount']/$buy['buyqty']))*$row['qty']*100;
+                        $brokerage = (((($row['amount'] * $instrument_details[0]['lot_size']) +  (($buy['amount']/$buy['buyqty'])* $instrument_details[0]['lot_size'])) * $row['qty'])/100)*$brokerDetails['mcx_brokerage'];
+                        $profit = ($row['amount'] - ($buy['amount']/$buy['buyqty']))*$row['qty']*$instrument_details[0]['lot_size'];
                         $actualprofit = $profit - $brokerage;
-                        $holdingbalance = (($buy['amount']/$buy['buyqty']) * $row['qty'] * 100) / $brokerDetails['mcx_holding'];
+                        $holdingbalance = (($buy['amount']/$buy['buyqty']) * $row['qty'] * $instrument_details[0]['lot_size']) / $brokerDetails['mcx_holding'];
                     }
 
                     $balance = $user['fund_balance'] + $actualprofit + $buy['margin'];
@@ -413,6 +433,9 @@ public function excute_sell_order_settlement($orderid){
 
             $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
 
+            $instrument_details = Instruments::where('instrument_token', $row['instrument_id'])->get();
+            $instrument_details = json_decode($instrument_details,true);
+
             $url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
             $ch = curl_init();
             $curlConfig = array(
@@ -433,8 +456,8 @@ public function excute_sell_order_settlement($orderid){
                         $profit = ($last_price - $row['amount'])*$row['qty'];
                         $actualprofit = $profit - $brokerage;
                     } else {
-                        $brokerage = (((($last_price * 100) + ($row['amount'] * 100)) * $row['qty'])/100)*$brokerDetails['mcx_brokerage'];
-                        $profit = ($last_price - $row['amount'])*$row['qty']*100;
+                        $brokerage = (((($last_price * $instrument_details[0]['lot_size']) + ($row['amount'] * $instrument_details[0]['lot_size'])) * $row['qty'])/100)*$brokerDetails['mcx_brokerage'];
+                        $profit = ($last_price - $row['amount'])*$row['qty']*$instrument_details[0]['lot_size'];
                         $actualprofit = $profit - $brokerage;
                     }
 
