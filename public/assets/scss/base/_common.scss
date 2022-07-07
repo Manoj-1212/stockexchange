@@ -188,11 +188,11 @@ tbody tr:hover {
 
 .nav {
   margin-top: 14px;
-  background: #f5f9fc;
+  // background: #f5f9fc;
   border-bottom: transparent;
 }
 .nav-link.active {
-  color: #007bff;
+  color: #007bff !important;
   background: transparent;
   border-color: transparent;
 }
