@@ -59,7 +59,7 @@ class InstrumentsController extends Controller
             ->whereNotIn('instrument_token', $favourites)
             ->where('instruments.exchange', '=', $type)
             ->where('instruments.expiry','>',date('Y-m-d'))
-            ->where('instruments.expiry','<',date('Y-m-d', strtotime('+2 month', strtotime(date('Y-m-t')))))
+            ->where('instruments.expiry','<',date('Y-m-d', strtotime('+1 month', strtotime(date('Y-m-t')))))
             ->select('instruments.*')
             ->get();
         
@@ -110,7 +110,7 @@ class InstrumentsController extends Controller
             ->whereNotIn('instrument_token', $favourites)
             ->where('instruments.exchange', '=', $type)
             ->where('instruments.expiry','>',date('Y-m-d'))
-            ->where('instruments.expiry','<',date('Y-m-d', strtotime('+2 month', strtotime(date('Y-m-t')))))
+            ->where('instruments.expiry','<',date('Y-m-d', strtotime('+1 month', strtotime(date('Y-m-t')))))
             ->select('instruments.*')
             ->get();
         
@@ -295,7 +295,7 @@ class InstrumentsController extends Controller
         $user = JWTAuth::authenticate($this->token);
         $profit = ProfitLoss::select(DB::raw('SUM(actual_profit) as profitLoss'))->where('user_id', $user['id'])->first();
         $margin = Order::select(DB::raw('SUM(margin) as marginAvailable'))->where('user_id', $user['id'])->where('status', 0)->where('action', 1)->first();
-        $portfolio = ['ledgerBalance' => $user['fund_balance'], 'marginAvailable' => $user['fund_balance'] - ($margin->marginAvailable - $profit->profitLoss)  ,'activePl' => $profit->profitLoss,'m2m' => $user['fund_balance']+$profit->profitLoss];
+        $portfolio = ['ledgerBalance' => round($user['fund_balance'],2), 'marginAvailable' => round($user['fund_balance'] - ($margin->marginAvailable - $profit->profitLoss),2)  ,'activePl' => round($profit->profitLoss,2),'m2m' => round($user['fund_balance']+$profit->profitLoss,2)];
 
         return response()->json(['status' => true, 'portfolio' => $portfolio]);
 

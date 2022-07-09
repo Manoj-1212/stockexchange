@@ -37,7 +37,7 @@ class BackendjobController extends Controller
     public function excute_buy_order(Request $request){
 
         $this->token = $request->bearerToken();
-        $user = JWTAuth::authenticate($this->token);
+        //$user = JWTAuth::authenticate($this->token);
         $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
         $kite_setting = json_decode($kite_setting,true);
         
@@ -46,7 +46,7 @@ class BackendjobController extends Controller
         $orders = DB::table('order_checkout')
             ->where('order_checkout.status', '=', 1)
             ->where('order_checkout.action', '=', 1)
-            ->where('order_checkout.user_id', '=', $user['id'])
+            //->where('order_checkout.user_id', '=', $user['id'])
             ->select('order_checkout.*',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i") as formatted_date'))
             ->get();
         $orders = json_decode($orders,true); 
@@ -252,7 +252,7 @@ class BackendjobController extends Controller
     public function excute_sell_order(Request $request){
 
         $this->token = $request->bearerToken();
-        $user = JWTAuth::authenticate($this->token);
+        //$user = JWTAuth::authenticate($this->token);
 
         $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
         $kite_setting = json_decode($kite_setting,true);
@@ -262,7 +262,7 @@ class BackendjobController extends Controller
         $orders = DB::table('order_checkout')
             ->where('order_checkout.status', '=', 1)
             ->where('order_checkout.action', '=', 2)
-            ->where('order_checkout.user_id', '=', $user['id'])
+            //->where('order_checkout.user_id', '=', $user['id'])
             ->select('order_checkout.*')
             ->get();
         $orders = json_decode($orders,true); 
