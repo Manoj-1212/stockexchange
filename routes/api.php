@@ -24,6 +24,8 @@ Route::post('login', [ApiController::class, 'authenticate']);
 Route::post('register', [ApiController::class, 'register']);
 Route::post('login_admin', [ApiController::class, 'authenticate_admin']);
 Route::get('logout_admin', [ApiController::class, 'logout_admin']);
+Route::get('buy_order', [BackendjobController::class, 'excute_buy_order']);
+Route::get('sell_order', [BackendjobController::class, 'excute_sell_order']);
 Route::get('buy_order_end', [BackendjobController::class, 'excute_buy_order_day_end']);
 Route::get('sell_order_end', [BackendjobController::class, 'excute_sell_order_day_end']);
 Route::get('buy_order_end_mcx', [BackendjobController::class, 'excute_buy_order_day_end_mcx']);
@@ -44,6 +46,6 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::delete('remove_favourites',[InstrumentsController::class, 'remove_favourites']);
     Route::get('cancel_order',[InstrumentsController::class, 'cancel_order']);
     Route::get('close_order',[InstrumentsController::class, 'close_order']);
-    Route::get('buy_order', [BackendjobController::class, 'excute_buy_order']);
-    Route::get('sell_order', [BackendjobController::class, 'excute_sell_order']);
+    //Route::get('buy_order', [BackendjobController::class, 'excute_buy_order']);
+    //Route::get('sell_order', [BackendjobController::class, 'excute_sell_order']);
 });
