@@ -16,6 +16,10 @@ if (!$conn) {
 $sql = "select * from users where id = ".$_SESSION['user_id'];
 $users = mysqli_query($conn, $sql);
 $users = mysqli_fetch_assoc($users);
+
+$sql = "select name,id from users where role = 'broker' and status = 1  order by id desc";
+
+$brokers = mysqli_query($conn, $sql);
 ?>
 <!doctype html>
 <html lang="en">
@@ -52,7 +56,7 @@ $users = mysqli_fetch_assoc($users);
                                 <li class="nav-item">
                                     <a class="nav-link active" id="general-tab" data-bs-toggle="tab" href="#general" role="tab" aria-controls="general" aria-selected="true">Change Password</a>
                                 </li>
-                                <?php if($_SESSION['role'] == 'broker'){ ?>
+                                <?php if($_SESSION['role'] == 'admin'){ ?>
                                 <li class="nav-item">
                                     <a class="nav-link" id="system-tab" data-bs-toggle="tab" href="#system" role="tab" aria-controls="system" aria-selected="false">Brokerage</a>
                                 </li>
@@ -78,11 +82,20 @@ $users = mysqli_fetch_assoc($users);
                                         </form>
                                     </div>
                                 </div>
-                                <?php if($_SESSION['role'] == 'broker'){ ?>
+                                <?php if($_SESSION['role'] == 'admin'){ ?>
                                 <div class="tab-pane fade" id="system" role="tabpanel" aria-labelledby="system-tab">
                                     <div class="col-md-6">
                                         <form method="post" action="" id="brokerageForm">
                                         <p class="text-muted" id="brokersuccess"></p>
+                                        <div class="mb-3">
+                                            <label for="site-title" class="form-label">Broker</label>
+                                            <select name="broker" id="broker" required class="form-select">
+                                                <option value="">Select your Broker</option>
+                                                <?php while($broker = mysqli_fetch_assoc($brokers )) { ?>
+                                                    <option value="<?php echo $broker['id']; ?>"><?php echo $broker['name']; ?></option>
+                                                <?php } ?>
+                                            </select>
+                                        </div>
                                         <div class="mb-3">
                                             <label for="site-title" class="form-label">Equity Leverage</label>
                                             <input type="text" value="<?php echo $users['nfo_leverage']; ?>" required name="nfo_leverage" class="form-control">

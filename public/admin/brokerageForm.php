@@ -8,7 +8,7 @@ if (!$conn) {
 }
 
 
-$sql = "update users set nfo_leverage = ".$_POST['nfo_leverage'].", nfo_brokerage = ".$_POST['nfo_brokerage'].", nfo_holding = ".$_POST['nfo_holding'].", mcx_leverage = ".$_POST['mcx_leverage'].", mcx_brokerage = ".$_POST['mcx_brokerage'].", mcx_holding = ".$_POST['mcx_holding']." where id = ".$_POST['user_id'];
+$sql = "update users set nfo_leverage = ".$_POST['nfo_leverage'].", nfo_brokerage = ".$_POST['nfo_brokerage'].", nfo_holding = ".$_POST['nfo_holding'].", mcx_leverage = ".$_POST['mcx_leverage'].", mcx_brokerage = ".$_POST['mcx_brokerage'].", mcx_holding = ".$_POST['mcx_holding']." where id = ".$_POST['broker'];
 
 mysqli_query($conn, $sql);
 
