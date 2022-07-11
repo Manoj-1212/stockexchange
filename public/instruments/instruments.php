@@ -28,7 +28,7 @@ $url = 'https://api.kite.trade/instruments/NFO';
         if (!empty($sheetData)) {
             for ($i=1; $i<count($sheetData); $i++) { //skipping first row
 
-                $db->query("INSERT INTO instruments (instrument_token, trading_symbol, name, expiry, lot_size, instrument_type, segment, exchange, created_date, updated_time) VALUES (".$sheetData[$i][0].", '".$sheetData[$i][2]."', '".$sheetData[$i][3]."', '".$sheetData[$i][5]."', ".$sheetData[$i][8].", '".$sheetData[$i][9]."', '".$sheetData[$i][10]."', '".$sheetData[$i][11]."', '".date("Y-m-d H:i:s")."', '".date("Y-m-d H:i:s")."')");
+                $db->query("INSERT INTO instruments (instrument_token, trading_symbol, name, expiry, lot_size, instrument_type, segment, exchange, created_at, updated_at) VALUES (".$sheetData[$i][0].", '".$sheetData[$i][2]."', '".$sheetData[$i][3]."', '".$sheetData[$i][5]."', ".$sheetData[$i][8].", '".$sheetData[$i][9]."', '".$sheetData[$i][10]."', '".$sheetData[$i][11]."', '".date("Y-m-d H:i:s")."', '".date("Y-m-d H:i:s")."')");
             }
         }
         echo "Records inserted successfully.";
