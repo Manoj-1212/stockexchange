@@ -198,6 +198,7 @@ class InstrumentsController extends Controller
             if($data['order_type'] == 1) {
                 $Order->status = 0;
             } else {
+                exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
                 $Order->status = 1;
             }
             $Order->save();

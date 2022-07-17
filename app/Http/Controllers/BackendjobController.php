@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\Funds;
 use App\Models\Brokerage;
 use App\Models\ProfitLoss;
+use App\Models\TickerPrice;
 
 
 class BackendjobController extends Controller
@@ -36,10 +37,10 @@ class BackendjobController extends Controller
 
     public function excute_buy_order(Request $request){
 
-        $this->token = $request->bearerToken();
+        //$this->token = $request->bearerToken();
         //$user = JWTAuth::authenticate($this->token);
-        $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
-        $kite_setting = json_decode($kite_setting,true);
+        //$kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
+        //$kite_setting = json_decode($kite_setting,true);
         
         $trades = Order::TRADE;
         
@@ -47,11 +48,11 @@ class BackendjobController extends Controller
             ->where('order_checkout.status', '=', 1)
             ->where('order_checkout.action', '=', 1)
             //->where('order_checkout.user_id', '=', $user['id'])
-            ->select('order_checkout.*',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i") as formatted_date'))
+            ->select('order_checkout.*')
             ->get();
         $orders = json_decode($orders,true); 
         foreach($orders as $row){
-            $url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
+            /*$url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
             $ch = curl_init();
             $curlConfig = array(
                 CURLOPT_URL => $url,
@@ -65,9 +66,14 @@ class BackendjobController extends Controller
             $last_price = $data['data'][$row['instrument_id']]['last_price'];   
             $high_price = $data['data'][$row['instrument_id']]['ohlc']['high'];  
             $low_price = $data['data'][$row['instrument_id']]['ohlc']['low'];   
-            curl_close($ch);
+            curl_close($ch);*/
+            $price = DB::table('ticker_price')
+            ->where('ticker_price.instrument_id', '=', $row['instrument_id'])
+            ->where('ticker_price.ltp', '=', $row['amount'])
+            ->where('ticker_price.created_date', '>', $row['created_at'])
+            ->count();
 
-            if(($row['amount'] >= $last_price - 1) && ($row['amount'] <= $last_price + 1)){
+            if($price > 0){
                 DB::table('order_checkout')->
                 where('id', $row['id'])->
                 update(array('status' => 0));
@@ -251,11 +257,11 @@ class BackendjobController extends Controller
 
     public function excute_sell_order(Request $request){
 
-        $this->token = $request->bearerToken();
+        //$this->token = $request->bearerToken();
         //$user = JWTAuth::authenticate($this->token);
 
-        $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
-        $kite_setting = json_decode($kite_setting,true);
+        //$kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
+        //$kite_setting = json_decode($kite_setting,true);
 
         $trades = Order::TRADE;
         
@@ -276,7 +282,7 @@ class BackendjobController extends Controller
             $instrument_details = Instruments::where('instrument_token', $row['instrument_id'])->get();
             $instrument_details = json_decode($instrument_details,true);
 
-            $url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
+            /*$url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
             $ch = curl_init();
             $curlConfig = array(
                 CURLOPT_URL => $url,
@@ -288,9 +294,15 @@ class BackendjobController extends Controller
             $result = curl_exec($ch);
             $data = json_decode($result,true);
             $last_price = $data['data'][$row['instrument_id']]['last_price'];  
-            curl_close($ch);
+            curl_close($ch);*/
 
-            if(($row['amount'] >= $last_price - 4) && ($row['amount'] <= $last_price + 4)){
+            $price = DB::table('ticker_price')
+            ->where('ticker_price.instrument_id', '=', $row['instrument_id'])
+            ->where('ticker_price.ltp', '=', $row['amount'])
+            ->where('ticker_price.created_date', '>', $row['created_at'])
+            ->count();
+
+            if($price > 0){
 
                 $buydetails = DB::table('order_checkout')
                 ->where('order_checkout.status', '=', 0)
@@ -351,10 +363,7 @@ class BackendjobController extends Controller
                 }
                        
                 }
-
-            
-
-            
+           
             }
 
         }
