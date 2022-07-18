@@ -69,7 +69,7 @@ class BackendjobController extends Controller
             curl_close($ch);*/
             $price = DB::table('ticker_price')
             ->where('ticker_price.instrument_id', '=', $row['instrument_id'])
-            ->where('ticker_price.ltp', '=', $row['amount'])
+            ->where('ticker_price.ltp', '<=', $row['amount'])
             ->where('ticker_price.created_date', '>', $row['created_at'])
             ->count();
 
@@ -100,9 +100,8 @@ class BackendjobController extends Controller
                 $new->amount = $usermargin;
                 $new->status = 2;
                 $new->save();
-
-                return response()->json(['status' => true, 'message' => "Request Processed"]);
                 exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
+                return response()->json(['status' => true, 'message' => "Request Processed"]);
             } 
         }
 
@@ -299,7 +298,7 @@ class BackendjobController extends Controller
 
             $price = DB::table('ticker_price')
             ->where('ticker_price.instrument_id', '=', $row['instrument_id'])
-            ->where('ticker_price.ltp', '=', $row['amount'])
+            ->where('ticker_price.ltp', '>=', $row['amount'])
             ->where('ticker_price.created_date', '>', $row['created_at'])
             ->count();
 
