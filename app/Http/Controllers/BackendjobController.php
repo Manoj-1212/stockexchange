@@ -102,6 +102,7 @@ class BackendjobController extends Controller
                 $new->save();
 
                 return response()->json(['status' => true, 'message' => "Request Processed"]);
+                exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
             } 
         }
 
@@ -360,6 +361,8 @@ class BackendjobController extends Controller
                     DB::table('order_checkout')->
                         where('id', $row['id'])->
                         update(array('status' => 2,'processed_amount' => round(($buy['amount']/$buy['buyqty']),2),'processed_date' => date('Y-m-d H:i:s')));
+
+                        exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
                 }
                        
                 }
