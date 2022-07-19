@@ -198,7 +198,7 @@ class InstrumentsController extends Controller
             if($data['order_type'] == 1) {
                 $Order->status = 0;
             } else {
-                exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
+                //exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
                 $Order->status = 1;
             }
             $Order->save();
@@ -294,9 +294,59 @@ class InstrumentsController extends Controller
 
     function portfolio(Request $request){
         $user = JWTAuth::authenticate($this->token);
-        $profit = ProfitLoss::select(DB::raw('SUM(actual_profit) as profitLoss'))->where('user_id', $user['id'])->first();
-        $margin = Order::select(DB::raw('SUM(margin) as marginAvailable'))->where('user_id', $user['id'])->where('status', 0)->where('action', 1)->first();
-        $portfolio = ['ledgerBalance' => round($user['fund_balance'],2), 'marginAvailable' => round($user['fund_balance'] - ($margin->marginAvailable - $profit->profitLoss),2)  ,'activePl' => round($profit->profitLoss,2),'m2m' => round($user['fund_balance']+$profit->profitLoss,2)];
+        $brokerDetails = $user->brokerDetail()->first();
+
+        $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
+            $kite_setting = json_decode($kite_setting,true);
+
+        $profit = 0;
+        $orders = DB::table('order_checkout')
+            ->where('order_checkout.status', '=', 0)
+            ->where('order_checkout.user_id', '=', $user['id'])
+            ->select('order_checkout.*')
+            ->get();
+        $row = json_decode($orders,true)[0]; 
+        if(!empty($row)){
+        $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
+        $instrument_details = Instruments::where('instrument_token', $row['instrument_id'])->get();
+        $instrument_details = json_decode($instrument_details,true);
+
+        $url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
+        $ch = curl_init();
+        $curlConfig = array(
+                CURLOPT_URL => $url,
+                CURLOPT_HTTPGET => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => array('Authorization: token '.$kite_setting[0]['api_key'].':'.$kite_setting[0]['access_token'])
+            );
+        curl_setopt_array($ch, $curlConfig);
+        $result = curl_exec($ch);
+        $data = json_decode($result,true);
+        $last_price = $data['data'][$row['instrument_id']]['last_price'];  
+        curl_close($ch);
+
+
+        if($row['action'] == 1){
+
+                    if($exchnage_type == 1){
+                        $profit = ($last_price - $row['amount'])*$row['qty'];
+                    } else {
+                        $profit = ($last_price - $row['amount'])*$row['qty']*$instrument_details[0]['lot_size'];
+                    }
+                } else {
+                    if($exchnage_type == 1){
+                        $profit = ($row['amount'] - $last_price)*$row['qty'];
+                        $actualprofit = $profit - $brokerage;
+                    } else {
+                        $profit = ($row['amount'] - $last_price)*$row['qty']*$instrument_details[0]['lot_size'];
+                    }
+
+                }
+
+        }
+
+        $margin = Order::select(DB::raw('SUM(margin) as marginAvailable'))->where('user_id', $user['id'])->where('status', 0)->first();
+        $portfolio = ['ledgerBalance' => round($user['fund_balance'],2), 'marginAvailable' => round($user['fund_balance'] - ($margin->marginAvailable + $profit),2)  ,'activePl' => round($profit,2),'m2m' => round($user['fund_balance']+$profit,2)];
 
         return response()->json(['status' => true, 'portfolio' => $portfolio]);
 
@@ -368,10 +418,11 @@ class InstrumentsController extends Controller
 
     function trading_profile(Request $request){
         $user = JWTAuth::authenticate($this->token);
-        
-        $nse = ["brokerage" => '500 per crore', "margin_intraday" => 'Turnonver / 400', "margin_holding" => 'Turnonver / 50'];
+        $brokerDetails = $user->brokerDetail()->first();
 
-        $mcx = ["brokerage" => '500 per crore', "margin_intraday" => 'Turnonver / 400', "margin_holding" => 'Turnonver / 50', "exposure_type" => 'per_turnover', "brokerage_type" => 'per_crore'];
+        $nse = ["brokerage" => '500 per crore', "margin_intraday" => 'Turnonver / '.$brokerDetails['nfo_leverage'], "margin_holding" => 'Turnonver / '.$brokerDetails['nfo_holding']];
+
+        $mcx = ["brokerage" => '500 per crore', "margin_intraday" => 'Turnonver / '.$brokerDetails['mcx_leverage'], "margin_holding" => 'Turnonver / '.$brokerDetails['mcx_holding'], "exposure_type" => 'per_turnover', "brokerage_type" => 'per_crore'];
         
         return response()->json(['status' => true, 'nseTrading' => $nse, 'mcxTrading' => $mcx]);
 
@@ -404,7 +455,7 @@ class InstrumentsController extends Controller
         DB::table('order_checkout')->
                 where('id', $id)->
                 update(array('status' => 3,'updated_at' => date('Y-m-d H:i:s')));
-        exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
+        //exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
         return response()->json(['status' => true, 'message' => "Trade is cancelled"]);
     }
 
@@ -503,8 +554,8 @@ class InstrumentsController extends Controller
                     DB::table('order_checkout')->
                         where('id', $row['id'])->
                         update(array('status' => 2,'processed_amount' => $last_price,'processed_date' => date('Y-m-d H:i:s')));
-                        
-                        exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
+
+                        //exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
                     return response()->json(['status' => true, 'message' => "Trade Closed Successfully"]);
 
     }
