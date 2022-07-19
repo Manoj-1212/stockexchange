@@ -305,8 +305,9 @@ class InstrumentsController extends Controller
             ->where('order_checkout.user_id', '=', $user['id'])
             ->select('order_checkout.*')
             ->get();
-        $row = json_decode($orders,true)[0]; 
+        $row = json_decode($orders,true); 
         if(!empty($row)){
+        $row = json_decode($orders,true)[0];
         $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
         $instrument_details = Instruments::where('instrument_token', $row['instrument_id'])->get();
         $instrument_details = json_decode($instrument_details,true);
