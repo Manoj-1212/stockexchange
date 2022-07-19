@@ -203,7 +203,7 @@ class InstrumentsController extends Controller
             }
             $Order->save();
 
-            if($data['action'] == 1 && $data['order_type'] == 1) {
+            if($data['order_type'] == 1) {
                 DB::table('users')->
                     where('id', $user['id'])->
                     update(array('fund_balance' => $user['fund_balance'] - $usermargin));
