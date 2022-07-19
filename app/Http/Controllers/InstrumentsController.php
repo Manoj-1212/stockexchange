@@ -198,7 +198,7 @@ class InstrumentsController extends Controller
             if($data['order_type'] == 1) {
                 $Order->status = 0;
             } else {
-                //exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
+                exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
                 $Order->status = 1;
             }
             $Order->save();
@@ -455,7 +455,7 @@ class InstrumentsController extends Controller
         DB::table('order_checkout')->
                 where('id', $id)->
                 update(array('status' => 3,'updated_at' => date('Y-m-d H:i:s')));
-        //exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
+        exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
         return response()->json(['status' => true, 'message' => "Trade is cancelled"]);
     }
 
@@ -555,7 +555,7 @@ class InstrumentsController extends Controller
                         where('id', $row['id'])->
                         update(array('status' => 2,'processed_amount' => $last_price,'processed_date' => date('Y-m-d H:i:s')));
 
-                        //exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
+                        exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
                     return response()->json(['status' => true, 'message' => "Trade Closed Successfully"]);
 
     }
