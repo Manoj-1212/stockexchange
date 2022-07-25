@@ -127,7 +127,7 @@ class InstrumentsController extends Controller
         
         if(($dt3 == "saturday" ) || ($dt3 == "sunday"))
             {
-                return response()->json(['status' => false, 'message' => "Market Not Open"]);
+                //return response()->json(['status' => false, 'message' => "Market Not Open"]);
             } 
         
         $exchnage_type = Instruments::where('instrument_token', $request->instrument_token)->first()->is_NFO_MCX();
@@ -172,7 +172,7 @@ class InstrumentsController extends Controller
             return response()->json(['success' => false,'message' => $validator->messages()], 200);
         }
 
-        
+
         if($exchnage_type == 1){
             $usermargin = ($data['amount'] * $data['quantity'])/$brokerDetails['nfo_leverage'];
             $holdingbalance = ($data['amount'] * $data['quantity']) / $brokerDetails['nfo_holding'];
@@ -181,7 +181,378 @@ class InstrumentsController extends Controller
             $holdingbalance = ($data['amount'] * $data['quantity'] * $instrument_details[0]['lot_size']) / $brokerDetails['mcx_holding'];
         }
 
-        if($user['fund_balance'] > $usermargin) {
+        if($user['fund_balance'] < $usermargin) {
+            return response()->json(['status' => false, 'message' => "Low wallet balance. Margin Short By ".$usermargin]);
+        }
+
+        $sellexists = false;
+        $buyexists = false;
+
+        if($data['action'] == 1) {
+
+            $sellcount = DB::table('order_checkout')
+                ->where('order_checkout.status', '=', 0)
+                ->where("order_checkout.user_id","=",$user['id'])
+                ->where('order_checkout.instrument_id', '=',$data['instrument_id'])
+                ->where('order_checkout.action', '=', 2)
+                ->count();
+            if($sellcount > 0){
+                $sellexists = true;
+                    $selldetails = DB::table('order_checkout')
+                        ->where('order_checkout.status', '=', 0)
+                        ->where("order_checkout.user_id","=",$user['id'])
+                        ->where('order_checkout.instrument_id', '=',$data['instrument_id'])
+                        ->where('order_checkout.action', '=', 2)
+                        ->select('*')
+                        ->orderby('id','asc')
+                        ->get();
+                    $selldetails = json_decode($selldetails,true);
+                    $quantity = $data['quantity'];
+                    foreach($selldetails as $row){
+                        if($quantity >= $row['qty']){
+
+                        if($exchnage_type == 1){
+                        $brokerage = ((($row['amount'] + $data['amount']) * $row['qty'])/100)*$brokerDetails['nfo_brokerage'];
+                        $profit = ($row['amount'] - $data['amount'])*$row['qty'];
+                        $actualprofit = $profit - $brokerage;
+                        } else {
+                        $brokerage = (((($row['amount'] * $instrument_details[0]['lot_size']) + ($data['amount'] * $instrument_details[0]['lot_size'])) * $row['qty'])/100)*$brokerDetails['mcx_brokerage'];
+                        $profit = ($row['amount'] - $data['amount'])*$row['qty']*$instrument_details[0]['lot_size'];
+                        $actualprofit = $profit - $brokerage;
+                        }
+
+
+                        $balance = $user['fund_balance'] + $actualprofit + $row['margin'];
+                        DB::table('users')->where('id', $user['id'])->update(array('fund_balance' => $balance));
+
+                        $new = new Funds;
+                        $new->user_id = $user['id'];
+                        $new->amount = $actualprofit + $row['margin'];
+                        $new->status = 1;
+                        $new->save();
+
+
+                        $new = new Brokerage;
+                        $new->user_id = $user['id'];
+                        $new->instrument_id = $data['instrument_id'];
+                        $new->brokerage = $brokerage;
+                        $new->exchange = $exchnage_type;
+                        $new->broker_id = $brokerDetails['id'];
+                        $new->save();
+
+                        $new = new ProfitLoss;
+                        $new->user_id = $user['id'];
+                        $new->instrument_id = $data['instrument_id'];
+                        $new->profit = $profit;
+                        $new->actual_profit = $actualprofit;
+                        $new->exchange = $exchnage_type;
+                        $new->broker_id = $brokerDetails['id'];
+                        $new->save();
+
+                        DB::table('order_checkout')->
+                        where('id', $row['id'])->
+                        update(array('status' => 2,'processed_amount' => $data['amount'],'processed_date' => date('Y-m-d H:i:s')));
+
+                        $quantity = $quantity - $row['qty'];
+                        } else if($quantity < $row['qty'] && $quantity > 0){
+                            $margin = ($row['margin']/$row['qty'])*$quantity;
+                            $holding = ($row['holding_balance']/$row['qty'])*$quantity;
+
+                            $Order = new Order;
+                            $Order->instrument_id = $data['instrument_id'];
+                            $Order->user_id = $user['id'];
+                            $Order->amount = $data['amount'];
+                            $Order->total_amount = round($data['amount'] * $quantity,2);
+                            $Order->qty = $quantity;
+                            $Order->remaining_qty = $quantity;
+                            $Order->order_type = $data['order_type'];
+                            $Order->action = 1;
+                            $Order->exchange = $exchnage_type;
+                            $Order->margin = $margin;
+                            $Order->holding_balance = $holding;
+                            $Order->instrument_details = $data['instrument_details'];
+                            $Order->status = 0;
+                            $Order->save();
+
+
+                            if($exchnage_type == 1){
+                        $brokerage = ((($row['amount'] + $data['amount']) * $quantity)/100)*$brokerDetails['nfo_brokerage'];
+                        $profit = ($row['amount'] - $data['amount'])*$quantity;
+                        $actualprofit = $profit - $brokerage;
+                        } else {
+                        $brokerage = (((($row['amount'] * $instrument_details[0]['lot_size']) + ($data['amount'] * $instrument_details[0]['lot_size'])) * $quantity)/100)*$brokerDetails['mcx_brokerage'];
+                        $profit = ($row['amount'] - $data['amount'])*$quantity*$instrument_details[0]['lot_size'];
+                        $actualprofit = $profit - $brokerage;
+                        }
+
+
+                        $balance = $user['fund_balance'] + $actualprofit + $margin;
+                        DB::table('users')->where('id', $user['id'])->update(array('fund_balance' => $balance));
+
+                        $new = new Funds;
+                        $new->user_id = $user['id'];
+                        $new->amount = $actualprofit + $margin;
+                        $new->status = 1;
+                        $new->save();
+
+
+                        $new = new Brokerage;
+                        $new->user_id = $user['id'];
+                        $new->instrument_id = $data['instrument_id'];
+                        $new->brokerage = $brokerage;
+                        $new->exchange = $exchnage_type;
+                        $new->broker_id = $brokerDetails['id'];
+                        $new->save();
+
+                        $new = new ProfitLoss;
+                        $new->user_id = $user['id'];
+                        $new->instrument_id = $data['instrument_id'];
+                        $new->profit = $profit;
+                        $new->actual_profit = $actualprofit;
+                        $new->exchange = $exchnage_type;
+                        $new->broker_id = $brokerDetails['id'];
+                        $new->save();
+
+                        DB::table('order_checkout')->
+                        where('id', $Order->id)->
+                        update(array('status' => 2,'processed_amount' => $row['amount'],'processed_date' => $row['created_at']));
+
+
+                        DB::table('order_checkout')->
+                        where('id', $row['id'])->
+                        update(array('qty' => $row['qty'] - $quantity,'margin' => $row['margin'] - $margin , 'holding_balance' =>  $row['holding_balance'] - $holding, 'remaining_qty' =>  $row['qty'] - $quantity, 'total_amount' => $row['amount'] * ($row['qty'] - $quantity) ));
+
+
+                        $quantity = 0;
+                        } 
+                    }
+                    if($quantity != 0){
+
+                            if($exchnage_type == 1){
+                                $usermargin = ($data['amount'] * $quantity)/$brokerDetails['nfo_leverage'];
+                                $holdingbalance = ($data['amount'] * $quantity) / $brokerDetails['nfo_holding'];
+                            } else {
+                                $usermargin = ($data['amount'] * $instrument_details[0]['lot_size'] * $quantity)/$brokerDetails['mcx_leverage'];
+                                $holdingbalance = ($data['amount'] * $quantity * $instrument_details[0]['lot_size']) / $brokerDetails['mcx_holding'];
+                            }
+
+                            $Order = new Order;
+                            $Order->instrument_id = $data['instrument_id'];
+                            $Order->user_id = $user['id'];
+                            $Order->amount = $data['amount'];
+                            $Order->total_amount = round($data['amount'] * $quantity,2);
+                            $Order->qty = $quantity;
+                            $Order->remaining_qty = $quantity;
+                            $Order->order_type = $data['order_type'];
+                            $Order->action = $data['action'];
+                            $Order->exchange = $exchnage_type;
+                            $Order->margin = $usermargin;
+                            $Order->holding_balance = $holdingbalance;
+                            $Order->instrument_details = $data['instrument_details'];
+                            $Order->status = 0;
+                            $Order->save();
+
+                                DB::table('users')->
+                                    where('id', $user['id'])->
+                                    update(array('fund_balance' => $user['fund_balance'] - $usermargin));
+
+                                $new = new Funds;
+                                $new->user_id = $user['id'];
+                                $new->amount = $usermargin;
+                                $new->status = 2;
+                                $new->save();
+
+                    }
+
+            }
+
+            
+        } else if($data['action'] == 2) {
+            $buycount = DB::table('order_checkout')
+                ->where('order_checkout.status', '=', 0)
+                ->where("order_checkout.user_id","=",$user['id'])
+                ->where('order_checkout.instrument_id', '=',$data['instrument_id'])
+                ->where('order_checkout.action', '=', 1)
+                ->count();
+
+            if($buycount > 0){
+
+                    $buyexists = true;
+            
+
+                    $buydetails = DB::table('order_checkout')
+                    ->where('order_checkout.status', '=', 0)
+                    ->where("order_checkout.user_id","=",$user['id'])
+                    ->where('order_checkout.instrument_id', '=',$data['instrument_id'])
+                    ->where('order_checkout.action', '=', 1)
+                    ->select('*')
+                    ->get();
+                    $buydetails = json_decode($buydetails,true);
+                    $quantity = $data['quantity'];
+                    foreach($buydetails as $row){
+
+                    if($quantity >= $row['qty']){
+
+                        if($exchnage_type == 1){
+                        $brokerage = ((($data['amount'] + $row['amount']) * $row['qty'])/100)*$brokerDetails['nfo_brokerage'];
+                        $profit = ($data['amount'] - $row['amount'])*$row['qty'];
+                        $actualprofit = $profit - $brokerage;
+                        } else {
+                        $brokerage = (((($row['amount'] * $instrument_details[0]['lot_size']) + ($data['amount'] * $instrument_details[0]['lot_size'])) * $row['qty'])/100)*$brokerDetails['mcx_brokerage'];
+                        $profit = ($data['amount'] - $row['amount'])*$row['qty']*$instrument_details[0]['lot_size'];
+                        $actualprofit = $profit - $brokerage;
+                        }
+
+
+                        $balance = $user['fund_balance'] + $actualprofit + $row['margin'];
+                        DB::table('users')->where('id', $user['id'])->update(array('fund_balance' => $balance));
+
+                        $new = new Funds;
+                        $new->user_id = $user['id'];
+                        $new->amount = $actualprofit + $row['margin'];
+                        $new->status = 1;
+                        $new->save();
+
+
+                        $new = new Brokerage;
+                        $new->user_id = $user['id'];
+                        $new->instrument_id = $data['instrument_id'];
+                        $new->brokerage = $brokerage;
+                        $new->exchange = $exchnage_type;
+                        $new->broker_id = $brokerDetails['id'];
+                        $new->save();
+
+                        $new = new ProfitLoss;
+                        $new->user_id = $user['id'];
+                        $new->instrument_id = $data['instrument_id'];
+                        $new->profit = $profit;
+                        $new->actual_profit = $actualprofit;
+                        $new->exchange = $exchnage_type;
+                        $new->broker_id = $brokerDetails['id'];
+                        $new->save();
+
+                        DB::table('order_checkout')->
+                        where('id', $row['id'])->
+                        update(array('status' => 2,'processed_amount' => $data['amount'],'processed_date' => date('Y-m-d H:i:s')));
+
+                        $quantity = $quantity - $row['qty'];
+
+                        } else if($quantity < $row['qty'] && $quantity > 0){
+
+                            $margin = ($row['margin']/$row['qty'])*$quantity;
+                            $holding = ($row['holding_balance']/$row['qty'])*$quantity;
+
+                            $Order = new Order;
+                            $Order->instrument_id = $data['instrument_id'];
+                            $Order->user_id = $user['id'];
+                            $Order->amount = $data['amount'];
+                            $Order->total_amount = round($data['amount'] * $quantity,2);
+                            $Order->qty = $quantity;
+                            $Order->remaining_qty = $quantity;
+                            $Order->order_type = $data['order_type'];
+                            $Order->action = 2;
+                            $Order->exchange = $exchnage_type;
+                            $Order->margin = $margin;
+                            $Order->holding_balance = $holding;
+                            $Order->instrument_details = $data['instrument_details'];
+                            $Order->status = 0;
+                            $Order->save();
+
+
+                            if($exchnage_type == 1){
+                        $brokerage = ((($data['amount'] + $row['amount']) * $quantity)/100)*$brokerDetails['nfo_brokerage'];
+                        $profit = ($data['amount'] - $row['amount'])*$quantity;
+                        $actualprofit = $profit - $brokerage;
+                        } else {
+                        $brokerage = (((($data['amount'] * $instrument_details[0]['lot_size']) + ($row['amount'] * $instrument_details[0]['lot_size'])) * $quantity)/100)*$brokerDetails['mcx_brokerage'];
+                        $profit = ($data['amount'] - $row['amount'])*$quantity*$instrument_details[0]['lot_size'];
+                        $actualprofit = $profit - $brokerage;
+                        }
+
+
+                        $balance = $user['fund_balance'] + $actualprofit + $margin;
+                        DB::table('users')->where('id', $user['id'])->update(array('fund_balance' => $balance));
+
+                        $new = new Funds;
+                        $new->user_id = $user['id'];
+                        $new->amount = $actualprofit + $margin;
+                        $new->status = 1;
+                        $new->save();
+
+
+                        $new = new Brokerage;
+                        $new->user_id = $user['id'];
+                        $new->instrument_id = $data['instrument_id'];
+                        $new->brokerage = $brokerage;
+                        $new->exchange = $exchnage_type;
+                        $new->broker_id = $brokerDetails['id'];
+                        $new->save();
+
+                        $new = new ProfitLoss;
+                        $new->user_id = $user['id'];
+                        $new->instrument_id = $data['instrument_id'];
+                        $new->profit = $profit;
+                        $new->actual_profit = $actualprofit;
+                        $new->exchange = $exchnage_type;
+                        $new->broker_id = $brokerDetails['id'];
+                        $new->save();
+
+                        DB::table('order_checkout')->
+                        where('id', $Order->id)->
+                        update(array('status' => 2,'processed_amount' => $row['amount'],'processed_date' => $row['created_at']));
+
+
+                        DB::table('order_checkout')->
+                        where('id', $row['id'])->
+                        update(array('qty' => $row['qty'] - $quantity,'margin' => $row['margin'] - $margin , 'holding_balance' =>  $row['holding_balance'] - $holding, 'remaining_qty' =>  $row['qty'] - $quantity, 'total_amount' => $row['amount'] * ($row['qty'] - $quantity) ));
+
+
+                        $quantity = 0;
+                        } 
+                    }
+
+                    if($quantity != 0){
+
+                            if($exchnage_type == 1){
+                                $usermargin = ($data['amount'] * $quantity)/$brokerDetails['nfo_leverage'];
+                                $holdingbalance = ($data['amount'] * $quantity) / $brokerDetails['nfo_holding'];
+                            } else {
+                                $usermargin = ($data['amount'] * $instrument_details[0]['lot_size'] * $quantity)/$brokerDetails['mcx_leverage'];
+                                $holdingbalance = ($data['amount'] * $quantity * $instrument_details[0]['lot_size']) / $brokerDetails['mcx_holding'];
+                            }
+
+                            $Order = new Order;
+                            $Order->instrument_id = $data['instrument_id'];
+                            $Order->user_id = $user['id'];
+                            $Order->amount = $data['amount'];
+                            $Order->total_amount = round($data['amount'] * $quantity,2);
+                            $Order->qty = $quantity;
+                            $Order->remaining_qty = $quantity;
+                            $Order->order_type = $data['order_type'];
+                            $Order->action = $data['action'];
+                            $Order->exchange = $exchnage_type;
+                            $Order->margin = $usermargin;
+                            $Order->holding_balance = $holdingbalance;
+                            $Order->instrument_details = $data['instrument_details'];
+                            $Order->status = 0;
+                            $Order->save();
+
+                                DB::table('users')->
+                                    where('id', $user['id'])->
+                                    update(array('fund_balance' => $user['fund_balance'] - $usermargin));
+
+                                $new = new Funds;
+                                $new->user_id = $user['id'];
+                                $new->amount = $usermargin;
+                                $new->status = 2;
+                                $new->save();
+
+                    }
+
+            }
+        }
+
+        if(!$buyexists && !$sellexists){
             $Order = new Order;
             $Order->instrument_id = $data['instrument_id'];
             $Order->user_id = $user['id'];
@@ -216,77 +587,8 @@ class InstrumentsController extends Controller
 
             }
 
-            if($data['action'] == 2 && $data['order_type'] == 1) {
-                
-                $buydetails = DB::table('order_checkout')
-                ->where('order_checkout.status', '=', 0)
-                ->where('order_checkout.instrument_id', '=',$data['instrument_id'])
-                ->where('order_checkout.action', '=', 1)
-                ->where('order_checkout.created_at', 'like', "%".date('Y-m-d')."%")
-                ->select(DB::raw('SUM(order_checkout.qty) as buyqty'), DB::raw('SUM(order_checkout.total_amount) as amount'),DB::raw('SUM(order_checkout.margin) as margin'))
-                ->get();
-                $buydetails = json_decode($buydetails,true); 
-
-                foreach($buydetails as $buy) {
-                    if($buy['amount'] == '' && $buy['buyqty'] == ''){
-                        DB::table('order_checkout')->
-                        where('id', $Order->id)->
-                        update(array('status' => 0));
-                    } else{
-                    if($exchnage_type == 1){
-                        $brokerage = ((($data['amount'] +  ($buy['amount']/$buy['buyqty'])) * $data['quantity'])/100)*$brokerDetails['nfo_brokerage'];
-                        $profit = ($data['amount'] - ($buy['amount']/$buy['buyqty']))*$data['quantity'];
-                        $actualprofit = $profit - $brokerage;
-                        $holdingbalance = (($buy['amount']/$buy['buyqty']) * $data['quantity']) / $brokerDetails['nfo_holding'];
-                    } else {
-                        $brokerage = (((($data['amount'] * $instrument_details[0]['lot_size']) +  (($buy['amount']/$buy['buyqty'])* $instrument_details[0]['lot_size'])) * $data['quantity'])/100)*$brokerDetails['mcx_brokerage'];
-                        $profit = ($data['amount'] - ($buy['amount']/$buy['buyqty']))*$data['quantity']*$instrument_details[0]['lot_size'];
-                        $actualprofit = $profit - $brokerage;
-                        $holdingbalance = (($buy['amount']/$buy['buyqty']) * $data['quantity'] * $instrument_details[0]['lot_size']) / $brokerDetails['mcx_holding'];
-                    }
-
-
-                    $balance = $user['fund_balance'] + $actualprofit + $buy['margin'];
-                    DB::table('users')->where('id', $user['id'])->update(array('fund_balance' => $balance));
-
-                    $new = new Funds;
-                    $new->user_id = $user['id'];
-                    $new->amount = $actualprofit + $buy['margin'];
-                    $new->status = 1;
-                    $new->save();
-
-
-                    $new = new Brokerage;
-                    $new->user_id = $user['id'];
-                    $new->instrument_id = $data['instrument_id'];
-                    $new->brokerage = $brokerage;
-                    $new->exchange = $exchnage_type;
-                    $new->broker_id = $brokerDetails['id'];
-                    $new->save();
-
-                    $new = new ProfitLoss;
-                    $new->user_id = $user['id'];
-                    $new->instrument_id = $data['instrument_id'];
-                    $new->profit = $profit;
-                    $new->actual_profit = $actualprofit;
-                    $new->exchange = $exchnage_type;
-                    $new->broker_id = $brokerDetails['id'];
-                    $new->save();
-
-                    DB::table('order_checkout')->
-                        where('id', $Order->id)->
-                        update(array('status' => 2,'processed_amount' => round(($buy['amount']/$buy['buyqty']),2),'processed_date' => date('Y-m-d H:i:s')));
-                    
-                    }
-
-                }
-
-            }
-
-            return response()->json(['status' => true, 'message' => "$buySell Order Place Successfully !!"]);
-        } else {
-            return response()->json(['status' => false, 'message' => "Low wallet balance"]);
         }
+        return response()->json(['status' => true, 'message' => "$buySell Order Place Successfully !!"]);
         
 
     }
@@ -560,7 +862,6 @@ class InstrumentsController extends Controller
                     return response()->json(['status' => true, 'message' => "Trade Closed Successfully"]);
 
     }
-
 
     /*function buy_sell(Request $request){
 
