@@ -16,6 +16,7 @@ use App\Models\Funds;
 use App\Models\Brokerage;
 use App\Models\ProfitLoss;
 use DateTime;
+use Illuminate\Support\Facades\Log;
 
 
 class InstrumentsController extends Controller
@@ -642,16 +643,15 @@ class InstrumentsController extends Controller
             curl_close($ch);
 
 
-                if($row['action'] == 1){
+                if($row['action'] == 'Buy'){
 
                     if($exchnage_type == 1){
                         $profit += ($last_price - $row['amount'])*$row['qty'];
                     } else {
                         $profit += ($last_price - $row['amount'])*$row['qty']*$instrument_details[0]['lot_size'];
                     } 
-    
+                    Log::info($profit);
                 } else {
-                        
                     if($exchnage_type == 1){
                         $profit += ($row['amount'] - $last_price)*$row['qty'];
                     } else {
@@ -659,6 +659,7 @@ class InstrumentsController extends Controller
                     }
 
                 }
+                
                     $i++;
             }
         }
