@@ -27,8 +27,9 @@ $url = 'https://api.kite.trade/instruments/NFO';
         $sheetData = $spreadsheet->getActiveSheet()->toArray();
         if (!empty($sheetData)) {
             for ($i=1; $i<count($sheetData); $i++) { //skipping first row
-
-                $db->query("INSERT INTO instruments (instrument_token, trading_symbol, name, expiry, lot_size, instrument_type, segment, exchange, created_at, updated_at) VALUES (".$sheetData[$i][0].", '".$sheetData[$i][2]."', '".$sheetData[$i][3]."', '".$sheetData[$i][5]."', ".$sheetData[$i][8].", '".$sheetData[$i][9]."', '".$sheetData[$i][10]."', '".$sheetData[$i][11]."', '".date("Y-m-d H:i:s")."', '".date("Y-m-d H:i:s")."')");
+                echo "INSERT INTO instruments (instrument_token, trading_symbol, name, expiry, lot_size, instrument_type, segment, exchange, created_at, updated_at) SELECT ".$sheetData[$i][0].", '".$sheetData[$i][2]."', '".$sheetData[$i][3]."', '".$sheetData[$i][5]."', ".$sheetData[$i][8].", '".$sheetData[$i][9]."', '".$sheetData[$i][10]."', '".$sheetData[$i][11]."', '".date("Y-m-d H:i:s")."', '".date("Y-m-d H:i:s")."' WHERE NOT EXISTS (SELECT 1 FROM instruments WHERE instrument_token=".$sheetData[$i][0].");";
+                echo "<br />";
+                //$db->query("INSERT INTO instruments (instrument_token, trading_symbol, name, expiry, lot_size, instrument_type, segment, exchange, created_at, updated_at) VALUES (".$sheetData[$i][0].", '".$sheetData[$i][2]."', '".$sheetData[$i][3]."', '".$sheetData[$i][5]."', ".$sheetData[$i][8].", '".$sheetData[$i][9]."', '".$sheetData[$i][10]."', '".$sheetData[$i][11]."', '".date("Y-m-d H:i:s")."', '".date("Y-m-d H:i:s")."')");
             }
         }
         echo "Records inserted successfully.";

@@ -127,7 +127,7 @@ class InstrumentsController extends Controller
         
         if(($dt3 == "saturday" ) || ($dt3 == "sunday"))
             {
-                //return response()->json(['status' => false, 'message' => "Market Not Open"]);
+                return response()->json(['status' => false, 'message' => "Market Not Open"]);
             } 
         
         $exchnage_type = Instruments::where('instrument_token', $request->instrument_token)->first()->is_NFO_MCX();
@@ -234,6 +234,7 @@ class InstrumentsController extends Controller
 
                         $new = new Brokerage;
                         $new->user_id = $user['id'];
+                        $new->order_id = $row['id'];
                         $new->instrument_id = $data['instrument_id'];
                         $new->brokerage = $brokerage;
                         $new->exchange = $exchnage_type;
@@ -242,6 +243,7 @@ class InstrumentsController extends Controller
 
                         $new = new ProfitLoss;
                         $new->user_id = $user['id'];
+                        $new->order_id = $row['id'];
                         $new->instrument_id = $data['instrument_id'];
                         $new->profit = $profit;
                         $new->actual_profit = $actualprofit;
@@ -298,6 +300,7 @@ class InstrumentsController extends Controller
 
                         $new = new Brokerage;
                         $new->user_id = $user['id'];
+                        $new->order_id = $Order->id;
                         $new->instrument_id = $data['instrument_id'];
                         $new->brokerage = $brokerage;
                         $new->exchange = $exchnage_type;
@@ -306,6 +309,7 @@ class InstrumentsController extends Controller
 
                         $new = new ProfitLoss;
                         $new->user_id = $user['id'];
+                        $new->order_id = $Order->id;
                         $new->instrument_id = $data['instrument_id'];
                         $new->profit = $profit;
                         $new->actual_profit = $actualprofit;
@@ -416,6 +420,7 @@ class InstrumentsController extends Controller
 
                         $new = new Brokerage;
                         $new->user_id = $user['id'];
+                        $new->order_id = $row['id'];
                         $new->instrument_id = $data['instrument_id'];
                         $new->brokerage = $brokerage;
                         $new->exchange = $exchnage_type;
@@ -424,6 +429,7 @@ class InstrumentsController extends Controller
 
                         $new = new ProfitLoss;
                         $new->user_id = $user['id'];
+                        $new->order_id = $row['id'];
                         $new->instrument_id = $data['instrument_id'];
                         $new->profit = $profit;
                         $new->actual_profit = $actualprofit;
@@ -482,6 +488,7 @@ class InstrumentsController extends Controller
 
                         $new = new Brokerage;
                         $new->user_id = $user['id'];
+                        $new->order_id = $Order->id;
                         $new->instrument_id = $data['instrument_id'];
                         $new->brokerage = $brokerage;
                         $new->exchange = $exchnage_type;
@@ -490,6 +497,7 @@ class InstrumentsController extends Controller
 
                         $new = new ProfitLoss;
                         $new->user_id = $user['id'];
+                        $new->order_id = $Order->id;
                         $new->instrument_id = $data['instrument_id'];
                         $new->profit = $profit;
                         $new->actual_profit = $actualprofit;
@@ -605,53 +613,60 @@ class InstrumentsController extends Controller
         $orders = DB::table('order_checkout')
             ->where('order_checkout.status', '=', 0)
             ->where('order_checkout.user_id', '=', $user['id'])
-            ->select('order_checkout.*')
+            ->orderby('order_checkout.created_at','DESC')
+            ->join('instruments', 'instruments.instrument_token', 'order_checkout.instrument_id')
+            ->select('order_checkout.*','instruments.trading_symbol',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i:%s") as formatted_date'),DB::raw('DATE_FORMAT(order_checkout.updated_at, "%M %d , %H:%i:%s") as updated_date'))
             ->get();
-        $row = json_decode($orders,true); 
-        if(!empty($row)){
-        $row = json_decode($orders,true)[0];
-        $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
-        $instrument_details = Instruments::where('instrument_token', $row['instrument_id'])->get();
-        $instrument_details = json_decode($instrument_details,true);
+        $orderall = json_decode($orders,true); 
+        $orders = json_decode($orders,true);
+        $i=0;
+        if(!empty($orderall)){
+            foreach($orderall as $row) {
+            $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
+            $instrument_details = Instruments::where('instrument_token', $row['instrument_id'])->get();
+            $instrument_details = json_decode($instrument_details,true);
 
-        $url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
-        $ch = curl_init();
-        $curlConfig = array(
-                CURLOPT_URL => $url,
-                CURLOPT_HTTPGET => true,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => array('Authorization: token '.$kite_setting[0]['api_key'].':'.$kite_setting[0]['access_token'])
-            );
-        curl_setopt_array($ch, $curlConfig);
-        $result = curl_exec($ch);
-        $data = json_decode($result,true);
-        $last_price = $data['data'][$row['instrument_id']]['last_price'];  
-        curl_close($ch);
+            $url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
+            $ch = curl_init();
+            $curlConfig = array(
+                    CURLOPT_URL => $url,
+                    CURLOPT_HTTPGET => true,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_HTTPHEADER => array('Authorization: token '.$kite_setting[0]['api_key'].':'.$kite_setting[0]['access_token'])
+                );
+            curl_setopt_array($ch, $curlConfig);
+            $result = curl_exec($ch);
+            $data = json_decode($result,true);
+            $last_price = $data['data'][$row['instrument_id']]['last_price'];  
+            $orders[$i]['cmp'] = $last_price;
+            curl_close($ch);
 
 
-        if($row['action'] == 1){
+                if($row['action'] == 1){
 
                     if($exchnage_type == 1){
-                        $profit = ($last_price - $row['amount'])*$row['qty'];
+                        $profit += ($last_price - $row['amount'])*$row['qty'];
                     } else {
-                        $profit = ($last_price - $row['amount'])*$row['qty']*$instrument_details[0]['lot_size'];
-                    }
+                        $profit += ($last_price - $row['amount'])*$row['qty']*$instrument_details[0]['lot_size'];
+                    } 
+    
                 } else {
+                        
                     if($exchnage_type == 1){
-                        $profit = ($row['amount'] - $last_price)*$row['qty'];
-                        $actualprofit = $profit - $brokerage;
+                        $profit += ($row['amount'] - $last_price)*$row['qty'];
                     } else {
-                        $profit = ($row['amount'] - $last_price)*$row['qty']*$instrument_details[0]['lot_size'];
+                        $profit += ($row['amount'] - $last_price)*$row['qty']*$instrument_details[0]['lot_size'];
                     }
 
                 }
-
+                    $i++;
+            }
         }
 
         $margin = Order::select(DB::raw('SUM(margin) as marginAvailable'))->where('user_id', $user['id'])->where('status', 0)->first();
         $portfolio = ['ledgerBalance' => round($user['fund_balance'],2), 'marginAvailable' => round($user['fund_balance'] - ($margin->marginAvailable + $profit),2)  ,'activePl' => round($profit,2),'m2m' => round($user['fund_balance']+$profit,2)];
 
-        return response()->json(['status' => true, 'portfolio' => $portfolio]);
+        return response()->json(['status' => true, 'portfolio' => $portfolio, 'orders' => $orders, 'lot_size' => $instrument_details[0]['lot_size'], 'exchnage_type' => $exchnage_type]);
 
     }
 
@@ -676,15 +691,17 @@ class InstrumentsController extends Controller
         $trades = Order::TRADE;
         if($trades[$data['trade_type']] == 2){
             $orders = DB::table('order_checkout')
-            ->whereIn('order_checkout.status', [2])
+            ->where('order_checkout.status', '=', 2)
             ->where("order_checkout.user_id","=",$user['id'])
             ->where('order_checkout.created_at', '>=', $start_date." 00:00:00")
             ->where('order_checkout.created_at', '<=', $end_date." 23:59:59")
             ->join('instruments', 'instruments.instrument_token', 'order_checkout.instrument_id')
+            ->leftjoin('profit_loss', 'profit_loss.order_id', 'order_checkout.id')
+            ->leftjoin('brokerage', 'brokerage.order_id', 'order_checkout.id')
             ->orderby('order_checkout.created_at','DESC')
-            ->select('order_checkout.*','instruments.trading_symbol',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i:%s") as formatted_date'),DB::raw('DATE_FORMAT(order_checkout.processed_date, "%M %d , %H:%i:%s") as processed_date'))
+            ->select('order_checkout.*','profit_loss.profit','brokerage.brokerage','instruments.trading_symbol',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'),DB::raw('(CASE order_checkout.order_type WHEN 1 THEN "Market" ELSE "Order" END) as order_type'),DB::raw('DATE_FORMAT(order_checkout.created_at, "%M %d , %H:%i:%s") as formatted_date'),DB::raw('DATE_FORMAT(order_checkout.processed_date, "%M %d , %H:%i:%s") as processed_date'))
             ->get();
-        } if($trades[$data['trade_type']] == 1){
+        } else if($trades[$data['trade_type']] == 1){
             $orders = DB::table('order_checkout')
             ->whereIn('order_checkout.status', [1,3])
             ->where("order_checkout.user_id","=",$user['id'])
@@ -839,6 +856,7 @@ class InstrumentsController extends Controller
 
                     $new = new Brokerage;
                     $new->user_id = $row['user_id'];
+                    $new->order_id = $row['id'];
                     $new->instrument_id = $row['instrument_id'];
                     $new->brokerage = $brokerage;
                     $new->exchange = $exchnage_type;
@@ -847,6 +865,7 @@ class InstrumentsController extends Controller
 
                     $new = new ProfitLoss;
                     $new->user_id = $row['user_id'];
+                    $new->order_id = $row['id'];
                     $new->instrument_id = $row['instrument_id'];
                     $new->profit = $profit;
                     $new->actual_profit = $actualprofit;

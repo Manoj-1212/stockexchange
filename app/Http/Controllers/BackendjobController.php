@@ -133,6 +133,7 @@ class BackendjobController extends Controller
 
                             $new = new Brokerage;
                             $new->user_id = $user['id'];
+                            $new->order_id = $sell['id'];
                             $new->instrument_id = $row['instrument_id'];
                             $new->brokerage = $brokerage;
                             $new->exchange = $exchnage_type;
@@ -141,6 +142,7 @@ class BackendjobController extends Controller
 
                             $new = new ProfitLoss;
                             $new->user_id = $user['id'];
+                            $new->order_id = $sell['id'];
                             $new->instrument_id = $row['instrument_id'];
                             $new->profit = $profit;
                             $new->actual_profit = $actualprofit;
@@ -198,6 +200,7 @@ class BackendjobController extends Controller
 
                             $new = new Brokerage;
                             $new->user_id = $user['id'];
+                            $new->order_id = $Order->id;
                             $new->instrument_id = $row['instrument_id'];
                             $new->brokerage = $brokerage;
                             $new->exchange = $exchnage_type;
@@ -206,6 +209,7 @@ class BackendjobController extends Controller
 
                             $new = new ProfitLoss;
                             $new->user_id = $user['id'];
+                            $new->order_id = $Order->id;
                             $new->instrument_id = $row['instrument_id'];
                             $new->profit = $profit;
                             $new->actual_profit = $actualprofit;
@@ -492,6 +496,7 @@ class BackendjobController extends Controller
 
                     $new = new Brokerage;
                     $new->user_id = $row['user_id'];
+                    $new->order_id = $row['id'];
                     $new->instrument_id = $row['instrument_id'];
                     $new->brokerage = $brokerage;
                     $new->exchange = $exchnage_type;
@@ -500,6 +505,7 @@ class BackendjobController extends Controller
 
                     $new = new ProfitLoss;
                     $new->user_id = $row['user_id'];
+                    $new->order_id = $row['id'];
                     $new->instrument_id = $row['instrument_id'];
                     $new->profit = $profit;
                     $new->actual_profit = $actualprofit;
@@ -634,6 +640,7 @@ public function excute_sell_order_settlement($orderid){
 
                     $new = new Brokerage;
                     $new->user_id = $row['user_id'];
+                    $new->order_id = $row['id'];
                     $new->instrument_id = $row['instrument_id'];
                     $new->brokerage = $brokerage;
                     $new->exchange = $exchnage_type;
@@ -642,6 +649,7 @@ public function excute_sell_order_settlement($orderid){
 
                     $new = new ProfitLoss;
                     $new->user_id = $row['user_id'];
+                    $new->order_id = $row['id'];
                     $new->instrument_id = $row['instrument_id'];
                     $new->profit = $profit;
                     $new->actual_profit = $actualprofit;
