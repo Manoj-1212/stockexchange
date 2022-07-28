@@ -621,6 +621,8 @@ class InstrumentsController extends Controller
         $orderall = json_decode($orders,true); 
         $orders = json_decode($orders,true);
         $i=0;
+        $instrument_details = array();
+        $exchnage_type = 0;
         if(!empty($orderall)){
             foreach($orderall as $row) {
             $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
@@ -650,7 +652,6 @@ class InstrumentsController extends Controller
                     } else {
                         $profit += ($last_price - $row['amount'])*$row['qty']*$instrument_details[0]['lot_size'];
                     } 
-                    Log::info($profit);
                 } else {
                     if($exchnage_type == 1){
                         $profit += ($row['amount'] - $last_price)*$row['qty'];
@@ -667,7 +668,7 @@ class InstrumentsController extends Controller
         $margin = Order::select(DB::raw('SUM(margin) as marginAvailable'))->where('user_id', $user['id'])->where('status', 0)->first();
         $portfolio = ['ledgerBalance' => round($user['fund_balance'],2), 'marginAvailable' => round($user['fund_balance'] - ($margin->marginAvailable + $profit),2)  ,'activePl' => round($profit,2),'m2m' => round($user['fund_balance']+$profit,2)];
 
-        return response()->json(['status' => true, 'portfolio' => $portfolio, 'orders' => $orders, 'lot_size' => $instrument_details[0]['lot_size'], 'exchnage_type' => $exchnage_type]);
+        return response()->json(['status' => true, 'portfolio' => $portfolio, 'orders' => $orders, 'lot_size' => !empty($instrument_details)?$instrument_details[0]['lot_size']:1, 'exchnage_type' => $exchnage_type]);
 
     }
 
