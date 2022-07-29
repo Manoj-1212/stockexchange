@@ -60,7 +60,7 @@ class InstrumentsController extends Controller
             ->whereNotIn('instrument_token', $favourites)
             ->where('instruments.exchange', '=', $type)
             ->where('instruments.expiry','>',date('Y-m-d'))
-            ->where('instruments.expiry','<',date('Y-m-d', strtotime('+1 month', strtotime(date('Y-m-t')))))
+            ->where('instruments.expiry','<',date('Y-m-d', strtotime('+2 month', strtotime(date('Y-m-t')))))
             ->select('instruments.*')
             ->get();
         
@@ -111,7 +111,7 @@ class InstrumentsController extends Controller
             ->whereNotIn('instrument_token', $favourites)
             ->where('instruments.exchange', '=', $type)
             ->where('instruments.expiry','>',date('Y-m-d'))
-            ->where('instruments.expiry','<',date('Y-m-d', strtotime('+1 month', strtotime(date('Y-m-t')))))
+            ->where('instruments.expiry','<',date('Y-m-d', strtotime('+2 month', strtotime(date('Y-m-t')))))
             ->select('instruments.*')
             ->get();
         
