@@ -81,7 +81,7 @@ class BackendjobController extends Controller
                     where('id', $row['id'])->
                     update(array('status' => 0));
 
-                    DB::table('users')->
+                    /*DB::table('users')->
                     where('id', $user['id'])->
                     update(array('fund_balance' => $user['fund_balance'] - $usermargin));
 
@@ -89,7 +89,7 @@ class BackendjobController extends Controller
                     $new->user_id = $user['id'];
                     $new->amount = $usermargin;
                     $new->status = 2;
-                    $new->save();
+                    $new->save();*/
                     exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
 
                 } else {
@@ -121,12 +121,12 @@ class BackendjobController extends Controller
 
 
 
-                            $balance = $user['fund_balance'] + $actualprofit + $sell['margin'];
+                            $balance = $user['fund_balance'] + $actualprofit;// + $sell['margin'];
                             DB::table('users')->where('id', $user['id'])->update(array('fund_balance' => $balance));
 
                             $new = new Funds;
                             $new->user_id = $user['id'];
-                            $new->amount = $actualprofit + $sell['margin'];
+                            $new->amount = $actualprofit;// + $sell['margin'];
                             $new->status = 1;
                             $new->save();
 
@@ -188,12 +188,12 @@ class BackendjobController extends Controller
                             }
 
 
-                            $balance = $user['fund_balance'] + $actualprofit + $margin;
+                            $balance = $user['fund_balance'] + $actualprofit;// + $margin;
                             DB::table('users')->where('id', $user['id'])->update(array('fund_balance' => $balance));
 
                             $new = new Funds;
                             $new->user_id = $user['id'];
-                            $new->amount = $actualprofit + $margin;
+                            $new->amount = $actualprofit;// + $margin;
                             $new->status = 1;
                             $new->save();
 
@@ -258,7 +258,7 @@ class BackendjobController extends Controller
                             $Order->status = 0;
                             $Order->save();
 
-                                DB::table('users')->
+                                /*DB::table('users')->
                                     where('id', $user['id'])->
                                     update(array('fund_balance' => $user['fund_balance'] - $usermargin));
 
@@ -266,7 +266,7 @@ class BackendjobController extends Controller
                                 $new->user_id = $user['id'];
                                 $new->amount = $usermargin;
                                 $new->status = 2;
-                                $new->save();
+                                $new->save();*/
 
                         }
 
@@ -484,12 +484,12 @@ class BackendjobController extends Controller
                         $holdingbalance = (($buy['amount']/$buy['buyqty']) * $row['qty'] * $instrument_details[0]['lot_size']) / $brokerDetails['mcx_holding'];
                     }
 
-                    $balance = $user['fund_balance'] + $actualprofit + $buy['margin'];
+                    $balance = $user['fund_balance'] + $actualprofit;// + $buy['margin'];
                     DB::table('users')->where('id', $row['user_id'])->update(array('fund_balance' => $balance));
 
                     $new = new Funds;
                     $new->user_id = $row['user_id'];
-                    $new->amount = $actualprofit + $buy['margin'];
+                    $new->amount = $actualprofit;// + $buy['margin'];
                     $new->status = 1;
                     $new->save();
 
@@ -628,12 +628,12 @@ public function excute_sell_order_settlement($orderid){
                         $actualprofit = $profit - $brokerage;
                     }
 
-                    $balance = $user['fund_balance'] + $actualprofit + $row['margin'];
+                    $balance = $user['fund_balance'] + $actualprofit;// + $row['margin'];
                     DB::table('users')->where('id', $row['user_id'])->update(array('fund_balance' => $balance));
 
                     $new = new Funds;
                     $new->user_id = $row['user_id'];
-                    $new->amount = $actualprofit + $row['margin'];
+                    $new->amount = $actualprofit;// + $row['margin'];
                     $new->status = 1;
                     $new->save();
 

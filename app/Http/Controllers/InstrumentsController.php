@@ -140,7 +140,7 @@ class InstrumentsController extends Controller
             $sunrise = "9:15 am";
             $sunset = "3:30 pm";
         } else {
-            $sunrise = "9:00 am";
+            $sunrise = "01:00 am";
             $sunset = "11:30 pm";
         }
         $date1 = DateTime::createFromFormat('h:i a', $current_time);
@@ -182,7 +182,9 @@ class InstrumentsController extends Controller
             $holdingbalance = ($data['amount'] * $data['quantity'] * $instrument_details[0]['lot_size']) / $brokerDetails['mcx_holding'];
         }
 
-        if($user['fund_balance'] < $usermargin) {
+        $latestProfit = $this->profitcalculation();
+
+        if(($user['fund_balance']+$latestProfit) < $usermargin) {
             return response()->json(['status' => false, 'message' => "Low wallet balance. Margin Short By ".$usermargin]);
         }
 
@@ -223,12 +225,12 @@ class InstrumentsController extends Controller
                         }
 
 
-                        $balance = $user['fund_balance'] + $actualprofit + $row['margin'];
+                        $balance = $user['fund_balance'] + $actualprofit;// + $row['margin'];
                         DB::table('users')->where('id', $user['id'])->update(array('fund_balance' => $balance));
 
                         $new = new Funds;
                         $new->user_id = $user['id'];
-                        $new->amount = $actualprofit + $row['margin'];
+                        $new->amount = $actualprofit;// + $row['margin'];
                         $new->status = 1;
                         $new->save();
 
@@ -289,12 +291,12 @@ class InstrumentsController extends Controller
                         }
 
 
-                        $balance = $user['fund_balance'] + $actualprofit + $margin;
+                        $balance = $user['fund_balance'] + $actualprofit;// + $margin;
                         DB::table('users')->where('id', $user['id'])->update(array('fund_balance' => $balance));
 
                         $new = new Funds;
                         $new->user_id = $user['id'];
-                        $new->amount = $actualprofit + $margin;
+                        $new->amount = $actualprofit;// + $margin;
                         $new->status = 1;
                         $new->save();
 
@@ -357,7 +359,7 @@ class InstrumentsController extends Controller
                             $Order->status = 0;
                             $Order->save();
 
-                                DB::table('users')->
+                                /*DB::table('users')->
                                     where('id', $user['id'])->
                                     update(array('fund_balance' => $user['fund_balance'] - $usermargin));
 
@@ -365,7 +367,7 @@ class InstrumentsController extends Controller
                                 $new->user_id = $user['id'];
                                 $new->amount = $usermargin;
                                 $new->status = 2;
-                                $new->save();
+                                $new->save();*/
 
                     }
 
@@ -409,12 +411,12 @@ class InstrumentsController extends Controller
                         }
 
 
-                        $balance = $user['fund_balance'] + $actualprofit + $row['margin'];
+                        $balance = $user['fund_balance'] + $actualprofit; //+ $row['margin'];
                         DB::table('users')->where('id', $user['id'])->update(array('fund_balance' => $balance));
 
                         $new = new Funds;
                         $new->user_id = $user['id'];
-                        $new->amount = $actualprofit + $row['margin'];
+                        $new->amount = $actualprofit; // + $row['margin'];
                         $new->status = 1;
                         $new->save();
 
@@ -477,12 +479,12 @@ class InstrumentsController extends Controller
                         }
 
 
-                        $balance = $user['fund_balance'] + $actualprofit + $margin;
+                        $balance = $user['fund_balance'] + $actualprofit;// + $margin;
                         DB::table('users')->where('id', $user['id'])->update(array('fund_balance' => $balance));
 
                         $new = new Funds;
                         $new->user_id = $user['id'];
-                        $new->amount = $actualprofit + $margin;
+                        $new->amount = $actualprofit;// + $margin;
                         $new->status = 1;
                         $new->save();
 
@@ -546,7 +548,7 @@ class InstrumentsController extends Controller
                             $Order->status = 0;
                             $Order->save();
 
-                                DB::table('users')->
+                                /*DB::table('users')->
                                     where('id', $user['id'])->
                                     update(array('fund_balance' => $user['fund_balance'] - $usermargin));
 
@@ -554,7 +556,7 @@ class InstrumentsController extends Controller
                                 $new->user_id = $user['id'];
                                 $new->amount = $usermargin;
                                 $new->status = 2;
-                                $new->save();
+                                $new->save();*/
 
                     }
 
@@ -583,7 +585,7 @@ class InstrumentsController extends Controller
             }
             $Order->save();
 
-            if($data['order_type'] == 1) {
+            /*if($data['order_type'] == 1) {
                 DB::table('users')->
                     where('id', $user['id'])->
                     update(array('fund_balance' => $user['fund_balance'] - $usermargin));
@@ -594,7 +596,7 @@ class InstrumentsController extends Controller
                 $new->status = 2;
                 $new->save();
 
-            }
+            }*/
 
         }
         return response()->json(['status' => true, 'message' => "$buySell Order Place Successfully !!"]);
@@ -672,6 +674,72 @@ class InstrumentsController extends Controller
 
     }
 
+
+    function profitcalculation(){
+        $user = JWTAuth::authenticate($this->token);
+        $brokerDetails = $user->brokerDetail()->first();
+
+        $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
+            $kite_setting = json_decode($kite_setting,true);
+
+        $profit = 0;
+        $orders = DB::table('order_checkout')
+            ->where('order_checkout.status', '=', 0)
+            ->where('order_checkout.user_id', '=', $user['id'])
+            ->orderby('order_checkout.created_at','DESC')
+            ->join('instruments', 'instruments.instrument_token', 'order_checkout.instrument_id')
+            ->select('order_checkout.*',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'))
+            ->get();
+        $orderall = json_decode($orders,true); 
+        $orders = json_decode($orders,true);
+        $i=0;
+        $instrument_details = array();
+        $exchnage_type = 0;
+        if(!empty($orderall)){
+            foreach($orderall as $row) {
+            $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
+            $instrument_details = Instruments::where('instrument_token', $row['instrument_id'])->get();
+            $instrument_details = json_decode($instrument_details,true);
+
+            $url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
+            $ch = curl_init();
+            $curlConfig = array(
+                    CURLOPT_URL => $url,
+                    CURLOPT_HTTPGET => true,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_HTTPHEADER => array('Authorization: token '.$kite_setting[0]['api_key'].':'.$kite_setting[0]['access_token'])
+                );
+            curl_setopt_array($ch, $curlConfig);
+            $result = curl_exec($ch);
+            $data = json_decode($result,true);
+            $last_price = $data['data'][$row['instrument_id']]['last_price'];  
+            $orders[$i]['cmp'] = $last_price;
+            curl_close($ch);
+
+
+                if($row['action'] == 'Buy'){
+
+                    if($exchnage_type == 1){
+                        $profit += ($last_price - $row['amount'])*$row['qty'];
+                    } else {
+                        $profit += ($last_price - $row['amount'])*$row['qty']*$instrument_details[0]['lot_size'];
+                    } 
+                } else {
+                    if($exchnage_type == 1){
+                        $profit += ($row['amount'] - $last_price)*$row['qty'];
+                    } else {
+                        $profit += ($row['amount'] - $last_price)*$row['qty']*$instrument_details[0]['lot_size'];
+                    }
+
+                }
+                
+                    $i++;
+            }
+        }
+
+        return $profit;
+
+    }
 
     function trades(Request $request){
 
@@ -846,12 +914,12 @@ class InstrumentsController extends Controller
                     }
 
                 }
-                    $balance = $user['fund_balance'] + $actualprofit + $row['margin'];
+                    $balance = $user['fund_balance'] + $actualprofit;// + $row['margin'];
                     DB::table('users')->where('id', $row['user_id'])->update(array('fund_balance' => $balance));
 
                     $new = new Funds;
                     $new->user_id = $row['user_id'];
-                    $new->amount = $actualprofit + $row['margin'];
+                    $new->amount = $actualprofit;// + $row['margin'];
                     $new->status = 1;
                     $new->save();
 
