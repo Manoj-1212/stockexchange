@@ -668,7 +668,7 @@ class InstrumentsController extends Controller
         }
 
         $margin = Order::select(DB::raw('SUM(margin) as marginAvailable'))->where('user_id', $user['id'])->where('status', 0)->first();
-        $portfolio = ['ledgerBalance' => round($user['fund_balance'],2), 'marginAvailable' => round($user['fund_balance'] - ($margin->marginAvailable + $profit),2)  ,'activePl' => round($profit,2),'m2m' => round($user['fund_balance']+$profit,2)];
+        $portfolio = ['ledgerBalance' => round($user['fund_balance'],2), 'marginAvailable' => round(($user['fund_balance']  + $profit) - $margin->marginAvailable,2)  ,'activePl' => round($profit,2),'m2m' => round($user['fund_balance']+$profit,2)];
 
         return response()->json(['status' => true, 'portfolio' => $portfolio, 'orders' => $orders, 'lot_size' => !empty($instrument_details)?$instrument_details[0]['lot_size']:1, 'exchnage_type' => $exchnage_type]);
 
