@@ -665,4 +665,166 @@ public function excute_sell_order_settlement($orderid){
     }
 
 
+    public function sortloss() {
+        $user = User::where('status', 1)->where('role', 'user')->get();
+        $users = json_decode($user,true);
+        $kite_setting = DB::table('kite_setting')->select('kite_setting.*')->get();
+        $kite_setting = json_decode($kite_setting,true);
+        foreach($users as $user) {
+            $profit = 0;
+            $orders = DB::table('order_checkout')
+                ->where('order_checkout.status', '=', 0)
+                ->where('order_checkout.user_id', '=', $user['id'])
+                ->orderby('order_checkout.created_at','DESC')
+                ->join('instruments', 'instruments.instrument_token', 'order_checkout.instrument_id')
+                ->select('order_checkout.*',DB::raw('(CASE order_checkout.action WHEN 1 THEN "Buy" ELSE "Sell" END) as action'))
+                ->get();
+            $orderall = json_decode($orders,true); 
+            $instrument_details = array();
+            $exchnage_type = 0;
+            if(!empty($orderall)){
+                foreach($orderall as $row) {
+                $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
+                $instrument_details = Instruments::where('instrument_token', $row['instrument_id'])->get();
+                $instrument_details = json_decode($instrument_details,true);
+
+                $url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
+                $ch = curl_init();
+                $curlConfig = array(
+                        CURLOPT_URL => $url,
+                        CURLOPT_HTTPGET => true,
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_HTTPHEADER => array('Authorization: token '.$kite_setting[0]['api_key'].':'.$kite_setting[0]['access_token'])
+                    );
+                curl_setopt_array($ch, $curlConfig);
+                $result = curl_exec($ch);
+                $data = json_decode($result,true);
+                $last_price = $data['data'][$row['instrument_id']]['last_price'];  
+                curl_close($ch);
+
+
+                    if($row['action'] == 'Buy'){
+
+                        if($exchnage_type == 1){
+                            $profit += ($last_price - $row['amount'])*$row['qty'];
+                        } else {
+                            $profit += ($last_price - $row['amount'])*$row['qty']*$instrument_details[0]['lot_size'];
+                        } 
+                    } else {
+                        if($exchnage_type == 1){
+                            $profit += ($row['amount'] - $last_price)*$row['qty'];
+                        } else {
+                            $profit += ($row['amount'] - $last_price)*$row['qty']*$instrument_details[0]['lot_size'];
+                        }
+
+                    }
+                    
+                }
+            }
+
+            $m2m = $user['fund_balance'] + $profit;
+            $percentage = $user['fund_balance'] * (90/100);
+            if($m2m < -$percentage){
+                $this->close_order($user,$kite_setting,$orders);
+            }
+        }
+
+
+    }
+
+
+    function close_order($user,$kite_setting,$orders) {
+
+        /*$buydetails = DB::table('order_checkout')
+        ->where('order_checkout.status', '=', 0)
+        ->where('order_checkout.user_id', '=', $user['id'])
+        ->orderby('order_checkout.created_at','DESC')
+        ->select('order_checkout.*')
+        ->get();*/
+
+        $brokerDetails = User::where('id', $user['parent_id'])->get();
+        $brokerDetails = json_decode($brokerDetails,true);
+
+        $buydetails = json_decode($orders,true);
+        foreach($buydetails as $row) {
+            $exchnage_type = Instruments::where('instrument_token', $row['instrument_id'])->first()->is_NFO_MCX();
+            $instrument_details = Instruments::where('instrument_token', $row['instrument_id'])->get();
+            $instrument_details = json_decode($instrument_details,true);
+
+            $url = 'https://api.kite.trade/quote/ohlc?i='.$row['instrument_id'];
+            $ch = curl_init();
+            $curlConfig = array(
+                CURLOPT_URL => $url,
+                CURLOPT_HTTPGET => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => array('Authorization: token '.$kite_setting[0]['api_key'].':'.$kite_setting[0]['access_token'])
+            );
+            curl_setopt_array($ch, $curlConfig);
+            $result = curl_exec($ch);
+            $data = json_decode($result,true);
+            $last_price = $data['data'][$row['instrument_id']]['last_price'];  
+            curl_close($ch);
+            if($row['action'] == 'Buy'){
+
+                    if($exchnage_type == 1){
+                        $brokerage = ((($last_price + $row['amount']) * $row['qty'])/100)*$brokerDetails['nfo_brokerage'];
+                        $profit = ($last_price - $row['amount'])*$row['qty'];
+                        $actualprofit = $profit - $brokerage;
+                    } else {
+                        $brokerage = (((($last_price * $instrument_details[0]['lot_size']) + ($row['amount'] * $instrument_details[0]['lot_size'])) * $row['qty'])/100)*$brokerDetails['mcx_brokerage'];
+                        $profit = ($last_price - $row['amount'])*$row['qty']*$instrument_details[0]['lot_size'];
+                        $actualprofit = $profit - $brokerage;
+                    }
+                } else {
+                    if($exchnage_type == 1){
+                        $brokerage = ((($row['amount'] + $last_price) * $row['qty'])/100)*$brokerDetails['nfo_brokerage'];
+                        $profit = ($row['amount'] - $last_price)*$row['qty'];
+                        $actualprofit = $profit - $brokerage;
+                    } else {
+                        $brokerage = (((($row['amount'] * $instrument_details[0]['lot_size']) + ($last_price * $instrument_details[0]['lot_size'])) * $row['qty'])/100)*$brokerDetails['mcx_brokerage'];
+                        $profit = ($row['amount'] - $last_price)*$row['qty']*$instrument_details[0]['lot_size'];
+                        $actualprofit = $profit - $brokerage;
+                    }
+
+                }
+                    $balance = $user['fund_balance'] + $actualprofit;// + $row['margin'];
+                    DB::table('users')->where('id', $row['user_id'])->update(array('fund_balance' => $balance));
+
+                    $new = new Funds;
+                    $new->user_id = $row['user_id'];
+                    $new->amount = $actualprofit;// + $row['margin'];
+                    $new->status = 1;
+                    $new->save();
+
+
+                    $new = new Brokerage;
+                    $new->user_id = $row['user_id'];
+                    $new->order_id = $row['id'];
+                    $new->instrument_id = $row['instrument_id'];
+                    $new->brokerage = $brokerage;
+                    $new->exchange = $exchnage_type;
+                    $new->broker_id = $brokerDetails['id'];
+                    $new->save();
+
+                    $new = new ProfitLoss;
+                    $new->user_id = $row['user_id'];
+                    $new->order_id = $row['id'];
+                    $new->instrument_id = $row['instrument_id'];
+                    $new->profit = $profit;
+                    $new->actual_profit = $actualprofit;
+                    $new->exchange = $exchnage_type;
+                    $new->broker_id = $brokerDetails['id'];
+                    $new->save();
+
+                    DB::table('order_checkout')->
+                        where('id', $row['id'])->
+                        update(array('status' => 2,'processed_amount' => $last_price,'processed_date' => date('Y-m-d H:i:s')));
+
+                    exec("cd /var/www/html/kiteconnectjs-master && sudo forever restart examples/websocket.js");
+                    return response()->json(['status' => true, 'message' => "Trade Closed Successfully"]);
+        }
+    }
+
+
+
 }

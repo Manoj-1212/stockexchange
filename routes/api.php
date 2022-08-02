@@ -30,6 +30,7 @@ Route::get('buy_order_end', [BackendjobController::class, 'excute_buy_order_day_
 Route::get('sell_order_end', [BackendjobController::class, 'excute_sell_order_day_end']);
 Route::get('buy_order_end_mcx', [BackendjobController::class, 'excute_buy_order_day_end_mcx']);
 Route::get('sell_order_end_mcx', [BackendjobController::class, 'excute_sell_order_day_end_mcx']);
+Route::get('sortloss', [BackendjobController::class, 'sortloss']);
 
 
 Route::group(['middleware' => ['jwt.verify']], function() {
